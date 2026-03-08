@@ -60,4 +60,11 @@ public class TerminalLine {
     public void add(CharacterCell cell) {
         characters.add(cell);
     }
+
+    /**
+     * Returns the number of characters in this line
+     */
+    public int size() {
+        return this.characters.size();
+    }
 }

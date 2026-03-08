@@ -37,6 +37,7 @@ public class TerminalBuffer {
         this(width, height, scrollMax, Colour.BLACK, Colour.WHITE);
     }
 
+    //Getters for CursorX and Y
     public Integer getCursorX() {
         return this.cursorX;
     }
@@ -44,23 +45,20 @@ public class TerminalBuffer {
         return this.cursorY;
     }
 
+    /**
+     * Sets a cursor's x position to the specified position, clamped between [0, line_width), where line_width is the number of characters in the unwrapped line the cursor is on
+     * @param val the new x position to move the cursor to
+     */
     public void setCursorX(Integer val) {
         //Need to clamp the cursor's X position between [0, width)
         if (val <= 0) this.cursorX = 0;
-        else if(val >= this.width) this.cursorX = width - 1;
+        else if(val >= this.lines.get(cursorY).size()) this.cursorX = this.lines.get(cursorY).size() - 1;
         else this.cursorX = val;
     }
 
-    //If the Y-cursor is negative, that means we have gone into the scrollback
-    //If the Y cursor >= height, that means we have gone into the scrollforward
-    //In both of these cases, we need to keep Y in the range [0, height), and simply adjust the contents of the scrollback, screen and scrollforward to compensate
-
     /**
-     * Sets the cursor y value to the coordinate specified. If the value is negative, this is assumed to be a value in the scrollback
-     * If the value is >= the screen height, this is assumed to be in the scrollforward.
-     * The function will clamp the y position of the cursor to the number of lines stored in the scrollback/forward.
-     * The function will also shift the screen if necessary to show the new content at this new Y position
-     * @param val the new y coordinate to move to
+     * Sets the cursor's y position clamped between [0, number of lines)
+     * @param val the new y position to move the cursor to
      */
     public void setCursorY(Integer val) {
         if(val < 0) this.cursorY = 0;
@@ -68,30 +66,39 @@ public class TerminalBuffer {
         else this.cursorY = val;
     }
 
+    /**
+     * Moves the cursor's x position by some amount of steps. Negative values move to the left, positive values move to the right.
+     * The cursor's end position is clamped between [0, line_width), where line_width is the number of characters in the unwrapped line the cursor is on
+     * @param val the number of steps to move
+     */
     public void moveCursorX(Integer val) {
         setCursorX(this.cursorX + val);
     }
+    /**
+     * Moves the cursor's y position by some amount of steps. Negative values move up, positive values move down.
+     * The cursor's end position is clamped between [0, number of lines)
+     * @param val the number of steps to move
+     */
     public void moveCursorY(Integer val) {
         setCursorY(this.cursorY + val);
     }
 
     /**
-     * Overwrites a character with the specified text and moves the cursor one character to the right, moving onto a new line when it hits the edge
+     * Overwrites a character with the specified text and moves the cursor one character to the right, stopping when it hits the end of the logical line
      * @param text the new character to write on the screen
      */
     public void writeText(Character text) {
         CharacterCell currCell = lines.get(cursorY).get(cursorX);
         currCell.setCharacter(text);
 
-        moveCursorX(1);
-
-        //Move to a new line when you hit the edge
-        if(cursorX >= this.width) {
-            moveCursorY(1);
-            setCursorX(0);
-        }
+        //Stop when you hit the logical line
+        if(cursorX < this.lines.get(cursorY).size())
+            moveCursorX(1);
     }
 
+    /**
+     * Inserts text into a line
+     */
     public void insertText(Character text) {
         lines.get(cursorY).add(new CharacterCell(text, Colour.DEFAULT, Colour.DEFAULT, Style.NONE));
     }
