@@ -1,6 +1,7 @@
 package org.Buffer;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * Represents a 'logical' line, i.e. the entire string of characters before a '\n' symbol
@@ -8,23 +9,32 @@ import java.util.ArrayList;
  */
 public class TerminalLine {
     ArrayList<CharacterCell> characters; //Stores the characters in this line
+    private int width;
+    private boolean wrapped;
 
     /**
      * Creates a new Terminal line
      * Throws an IllegalArgumentException for negative values of capacity
-     * @param capacity the initial capacity of the TerminalLine
+     * @param width the width of the TerminalLine
      */
-    public TerminalLine(int capacity) {
-        characters = new ArrayList<>(capacity);
+    public TerminalLine(int width, boolean wrapped) {
+        characters = new ArrayList<>(width);
+        this.width = width;
+        this.wrapped = wrapped;
     }
 
-    /**
-     * Calculates the number of lines this logical TerminalLine will wrap to based on the given width
-     * @param width the width of the screen this line is in
-     * @return the number of screen lines this logical line takes up based on the screen width
-     */
-    public Integer getNumLinesWrapped(int width) {
-        return Math.round(this.characters.size() / (float) width);
+    public TerminalLine(int width) {
+        this(width, false);
+    }
+
+    public boolean getWrapped() {
+        return this.wrapped;
+    }
+    public int getWidth() {
+        return this.width;
+    }
+    public ArrayList<CharacterCell> getCharacters() {
+        return this.characters;
     }
 
     /**
@@ -58,7 +68,8 @@ public class TerminalLine {
      * @param cell the new cell to add
      */
     public void add(CharacterCell cell) {
-        characters.add(cell);
+        if(characters.size() <= width)
+            characters.add(cell);
     }
 
     /**
@@ -73,5 +84,9 @@ public class TerminalLine {
      */
     public void clear() {
         characters.clear();
+    }
+
+    public void addAll(Collection<? extends CharacterCell> c) {
+        characters.addAll(c);
     }
 }
