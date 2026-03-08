@@ -12,7 +12,7 @@ public class CharacterCell {
     private Character character;
     private Colour foregroundColour;
     private Colour backgroundColour;
-    private Flag styleFlag;
+    private Style styleFlag;
 
     /**
      * Constructor for a CharacterCell
@@ -21,7 +21,7 @@ public class CharacterCell {
      * @param bc the background colour of the cell
      * @param sf the style flag of the cell
      */
-    public CharacterCell(Character c, Colour fc, Colour bc, Flag sf) {
+    public CharacterCell(Character c, Colour fc, Colour bc, Style sf) {
         this.character = c;
         this.foregroundColour= fc;
         this.backgroundColour = bc;
@@ -50,11 +50,11 @@ public class CharacterCell {
         this.backgroundColour = val;
     }
 
-    public Flag getStyleFlag() {
+    public Style getStyleFlag() {
         return this.styleFlag;
     }
 
-    public void setStyleFlag(Flag val) {
+    public void setStyleFlag(Style val) {
         this.styleFlag = val;
     }
 }
