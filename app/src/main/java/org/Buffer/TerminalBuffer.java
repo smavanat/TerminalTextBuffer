@@ -16,11 +16,20 @@ public class TerminalBuffer {
      * Constructor for a TerminalBuffer including paramters for screen colours
      * @param width the width of the screen represented by the buffer in characters
      * @param height the height of the screen represented by the buffer in lines
-     * @param scrollMax the maximum number of lines the scrollback and scrollforward buffers can each store. If the input is negative, it will be assumed to be {@code Integer.MAX_VALUE}
+     * @param scrollMax the maximum number of lines the scrollback buffers can store. If the input is negative, it will be assumed to be {@code Integer.MAX_VALUE}
      * @param backgroundColour the background colour of the screen
      * @param foregroundColour the foreground colour of the screen
      */
     public TerminalBuffer(Integer width, Integer height, Integer scrollMax, Colour backgroundColour, Colour foregroundColour) {
+        this.width = 0;
+        this.height = 0;
+        this.scrollMaximum = scrollMax > 0 ? scrollMax : Integer.MAX_VALUE;
+        this.screenBackgroundColour = backgroundColour;
+        this.screenForegroundColour = foregroundColour;
+
+        this.cursorX = 0;
+        this.cursorY = 0;
+
         lines = new ArrayList<>(height * 2);
         for(int i = 0; i < lines.size(); i++) {
             lines.add(new TerminalLine(width));
@@ -31,7 +40,7 @@ public class TerminalBuffer {
      * Constructor for a TerminalBuffer not including paramters for screen colours. This will default the background and foreground colours to black and white respectively
      * @param width the width of the screen represented by the buffer in characters
      * @param height the height of the screen represented by the buffer in lines
-     * @param scrollMax the maximum number of lines the scrollback and scrollforward buffers can each store. If the input is negative, it will be assumed to be {@code Long.MAX_VALUE}
+     * @param scrollMax the maximum number of lines the scrollback buffers can store. If the input is negative, it will be assumed to be {@code Long.MAX_VALUE}
      */
     public TerminalBuffer(Integer width, Integer height, Integer scrollMax) {
         this(width, height, scrollMax, Colour.BLACK, Colour.WHITE);
@@ -98,8 +107,31 @@ public class TerminalBuffer {
 
     /**
      * Inserts text into a line
+     * @param text the new character to be added
      */
     public void insertText(Character text) {
         lines.get(cursorY).add(new CharacterCell(text, Colour.DEFAULT, Colour.DEFAULT, Style.NONE));
+    }
+
+    /**
+     * Adds a new line to the terminal buffer. If scrollMaximum is enabled, and
+     * the current number of logical lines in the buffer is greater than scrollMaximum, remove the top line before adding a new one
+     */
+    public void addLine() {
+        if(lines.size() >= scrollMaximum) {
+            lines.remove(0);
+            cursorY--;
+        }
+        lines.add(new TerminalLine(this.width));
+        cursorY++;
+    }
+
+    /**
+     * Clears the entire line buffer
+     */
+    public void clearAllLines() {
+        for(int i = 0; i < lines.size(); i++) {
+            lines.get(i).clear();
+        }
     }
 }

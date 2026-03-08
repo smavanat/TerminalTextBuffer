@@ -62,9 +62,16 @@ public class TerminalLine {
     }
 
     /**
-     * Returns the number of characters in this line
+     * @return the number of characters in this line
      */
     public int size() {
         return this.characters.size();
+    }
+
+    /**
+     * Clears the characters stored in this {@link TerminalLine}
+     */
+    public void clear() {
+        characters.clear();
     }
 }
