@@ -1,6 +1,9 @@
 package org.Buffer;
 
+import java.rmi.UnexpectedException;
 import java.util.ArrayList;
+
+import javax.management.InvalidAttributeValueException;
 
 /**
  * NOTE: Lines in the screen are set to have their wrapped attribute set to true if they wrap from the previous line,
@@ -251,6 +254,26 @@ public class TerminalBuffer {
         cursorX++;
 
         if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
+
+        return true;
+    }
+
+    /**
+     * Test implementation of inserting variable length chars (Untested)
+     */
+    public boolean insertText_New(Character text) {
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+
+        int charWidth = getCharWidth((int) text.charValue());
+        int oldLines = logicalToTerminal(cursorY);
+        if(scrollback.get(cursorY).get(cursorX-1).getTrailFlag() == TrailFlag.WIDE_END) cursorX -= 1;
+
+        clearOverlappingWideChars(charWidth);
+
+        if(width == 1) {
+            scrollback.get(cursorY).add(cursorX, new CharacterCell(text));
+            cursorX++;
+        }
 
         return true;
     }
@@ -545,9 +568,144 @@ public class TerminalBuffer {
 
     /**
      * Helper function to see how many Terminal screen lines the logical line at the given index takes up
+     * @param index the index of the logical line whose size in terminal lines we want to know
+     * @return the number of lines this logical line takes up
      */
     private int logicalToTerminal(int index) {
         return (scrollback.get(index).size() + this.width-1) /this.width;
     }
 
+    /**
+     * Returns the width of a character
+     * @param charVal the unicode value of the character
+     * @return -1 for control characters, 0 for combining marks, 2 for wide characters, and 1 otherwise
+     */
+    private int getCharWidth(int charVal) {
+        //Control characters
+        if (charVal == 0)
+            return 0;
+        if (charVal < 32 || (charVal >= 0x7f && charVal < 0xa0))
+            return -1;
+
+        //Combining marks
+        int type = Character.getType(charVal);
+        if(type == Character.NON_SPACING_MARK || type == Character.COMBINING_SPACING_MARK || type == Character.ENCLOSING_MARK) return 0;
+
+        //Wide characters
+        if(isWide(charVal)) return 2;
+
+        return 1; //Default
+    }
+
+    /**
+     * Function to determine if a character is two spaces wide
+     * Uses the Marcus Khun wcwidth tables: https://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
+     * @param charVal the unicode value of the char
+     * @return true if it is two characters wide, false otherwise
+     */
+    private boolean isWide(int charVal) {
+        return
+            charVal >= 0x1100 && (
+                charVal <= 0x115F ||                 // Hangul Jamo
+                charVal == 0x2329 || charVal == 0x232A ||
+                (charVal >= 0x2E80 && charVal <= 0xA4CF && charVal != 0x303F) ||
+                (charVal >= 0xAC00 && charVal <= 0xD7A3) || // Hangul syllables
+                (charVal >= 0xF900 && charVal <= 0xFAFF) || // CJK compatibility
+                (charVal >= 0xFE10 && charVal <= 0xFE19) ||
+                (charVal >= 0xFE30 && charVal <= 0xFE6F) ||
+                (charVal >= 0xFF00 && charVal <= 0xFF60) ||
+                (charVal >= 0xFFE0 && charVal <= 0xFFE6) ||
+                (charVal >= 0x20000 && charVal <= 0x3FFFD)
+        );
+    }
+
+    private void clearOverlappingWideChars(int charWidth) {
+        //Early exit if cursor is at the end of the line or if size is not 1 or 2 for now since I don't know what to do with other length chars
+        if(charWidth != 1 || charWidth != 2 || cursorX >= scrollback.get(cursorY).size()) return;
+
+        CharacterCell currentChar = getCellAtPos(cursorX, cursorY);
+        if(charWidth == 1 && currentChar.getTrailFlag() == TrailFlag.NORMAL) return; //No overlapping wide chars
+
+        ArrayList<CharacterCell> line = scrollback.get(cursorY); //Get the current line
+
+        //If the current char is the start of a wide character
+        if(currentChar.getTrailFlag() == TrailFlag.WIDE_START) {
+            //Sanity check in case we have half of a wide char at the end of the line
+            if(cursorX == line.size())
+                throw new IndexOutOfBoundsException("Half of a wide char at the end of the line");
+
+            //Set the current char to be blank and normal
+            currentChar.setCharacter(' ');
+            currentChar.setTrailFlag(TrailFlag.NORMAL);
+
+            //Get the second character of the wide char
+            CharacterCell nextChar = getCellAtPos(cursorX+1, cursorY);
+            if(nextChar.getTrailFlag() != TrailFlag.WIDE_END) //Sanity check
+                throw new IllegalArgumentException("The second char of a wide character was not WIDE_END");
+
+            //If this wide char is at the end of the line, remove the second character, otherwise just set it to blank and normal
+            if(cursorX + 2 != line.size()) {
+                nextChar.setTrailFlag(TrailFlag.NORMAL);
+                nextChar.setCharacter(' ');
+            }
+            else {
+                line.removeLast();
+            }
+        }
+        //If the current char is the end of a wide character
+        else if(currentChar.getTrailFlag() == TrailFlag.WIDE_END) {
+            if(cursorX == 0) //Sanity check
+                throw new IndexOutOfBoundsException("Half of a wide char at the start of the line");
+
+            //Set the current char to blank and normal
+            currentChar.setCharacter(' ');
+            currentChar.setTrailFlag(TrailFlag.NORMAL);
+
+            //Get the first character of the wide char
+            CharacterCell prevChar = getCellAtPos(cursorX-1, cursorY);
+            if(prevChar.getTrailFlag() != TrailFlag.WIDE_START) //Sanity check
+                throw new IllegalArgumentException("The first char of a wide character was not WIDE_START");
+
+            //Set the first character to be blank and normal
+            prevChar.setTrailFlag(TrailFlag.NORMAL);
+            prevChar.setCharacter(' ');
+        }
+        //If the width is two, also need to make sure the second char is also not touching the start of a wide char
+        if(charWidth == 2) {
+            if(cursorX == line.size()) //Early exit if we are at the end of the line
+                return;
+
+            CharacterCell nextChar = getCellAtPos(cursorX+1, cursorY); //Get the next character
+            if(nextChar.getTrailFlag() == TrailFlag.WIDE_START) {//If its the start of a wide char
+                //Overwite it to be blank and normal
+                nextChar.setTrailFlag(TrailFlag.NORMAL);
+                nextChar.setCharacter(' ');
+
+                //Check that there is a second character
+                if(cursorX + 2 >= line.size())
+                    throw new IndexOutOfBoundsException("Half of a wide char at the end of the line");
+
+                //Get the second character
+                CharacterCell nextNextChar = getCellAtPos(cursorX + 2, cursorY);
+                if(nextNextChar.getTrailFlag() != TrailFlag.WIDE_END) //Sanity check
+                    throw new IllegalArgumentException("The second char of a wide character was not WIDE_END");
+
+                //If this wide char is at the end of the line, remove the second character, otherwise just set it to blank and normal
+                if(cursorX + 3 != line.size()) {
+                    nextNextChar.setTrailFlag(TrailFlag.NORMAL);
+                    nextNextChar.setCharacter(' ');
+                }
+                else {
+                    scrollback.get(cursorY).removeLast();
+                }
+            }
+        }
+    }
+
+    private CharacterCell getCellAtPos(int xPos, int yPos) {
+        int clampedY = Math.max(0, Math.min(scrollback.size()-1, yPos));
+        int clampedX = Math.max(0, Math.min(scrollback.get(clampedY).size()-1, xPos));
+
+        return scrollback.get(clampedY).get(clampedX);
+    }
 }

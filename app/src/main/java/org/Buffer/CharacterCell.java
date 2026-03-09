@@ -13,6 +13,7 @@ public class CharacterCell {
     private Colour foregroundColour;
     private Colour backgroundColour;
     private Style styleFlag;
+    private TrailFlag trailFlag;
 
     /**
      * Constructor for a CharacterCell
@@ -20,20 +21,43 @@ public class CharacterCell {
      * @param fc the foreground colour of the cell
      * @param bc the background colour of the cell
      * @param sf the style flag of the cell
+     * @param tf the type of this character (1 space, 2 space start, 2 space end)
      */
-    public CharacterCell(Character c, Colour fc, Colour bc, Style sf) {
+    public CharacterCell(Character c, Colour fc, Colour bc, Style sf, TrailFlag tf) {
         this.character = c;
         this.foregroundColour= fc;
         this.backgroundColour = bc;
         this.styleFlag = sf;
+        this.trailFlag = tf;
     }
 
     /**
-     * Constructor for CharacterCell where all other attributes are set to default values, i.e. DEFAULT, DEFAULT and NONE
+     * Constructor for a CharacterCell where the trailer flag is automatically set to false.
+     * Should be the default constructor for non-wide characters
+     * @param c the character to be stored in this cell
+     * @param fc the foreground colour of the cell
+     * @param bc the background colour of the cell
+     * @param sf the style flag of the cell
+     */
+    public CharacterCell(Character c, Colour fc, Colour bc, Style sf) {
+        this(c, fc, bc, sf, TrailFlag.NORMAL);
+    }
+
+    /**
+     * Constructor for a non-wide CharacterCell where all other attributes are set to default values, i.e. DEFAULT, DEFAULT and NONE
      * @param c the character this CharacterCell should contain
      */
     public CharacterCell(Character c) {
         this(c, Colour.DEFAULT, Colour.DEFAULT, Style.NONE);
+    }
+
+    /**
+     * Constructor for a wide CharacterCell where all other attributes are set to default values, i.e. DEFAULT, DEFAULT and NONE
+     * @param c the character this CharacterCell should contain
+     * @param tf the type of this character (1 space, 2 space start, 2 space end)
+     */
+    public CharacterCell(Character c, TrailFlag tf) {
+        this(c, Colour.DEFAULT, Colour.DEFAULT, Style.NONE, tf);
     }
 
     //Getters and setters for all of the elements in this class
@@ -61,9 +85,15 @@ public class CharacterCell {
     public Style getStyleFlag() {
         return this.styleFlag;
     }
-
     public void setStyleFlag(Style val) {
         this.styleFlag = val;
+    }
+
+    public TrailFlag getTrailFlag() {
+        return this.trailFlag;
+    }
+    public void setTrailFlag(TrailFlag val) {
+        this.trailFlag = val;
     }
 
     @Override
