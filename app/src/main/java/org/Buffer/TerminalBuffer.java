@@ -144,7 +144,7 @@ public class TerminalBuffer {
      * @param val the new x position to move the cursor to
      */
     public void setCursorX(Integer val) {
-        cursorX = Math.max(0, Math.min(val, scrollback.get(cursorY).size()-1));
+        cursorX = Math.max(0, Math.min(val, scrollback.get(cursorY).size()));
     }
 
     /**
@@ -381,7 +381,7 @@ public class TerminalBuffer {
      * @return the background colour stored in the cell at the current cursor's position if the cursor is not beyond the end of the line
      */
     public Colour getBackgroundColourAtCursorPos() {
-        if(scrollback.get(cursorY).size() == cursorX) return null; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
+        if(scrollback.get(cursorY).size() == cursorX) return Colour.DEFAULT; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
         return scrollback.get(cursorY).get(cursorX).getBackgroundColour() == Colour.DEFAULT ? this.screenBackgroundColour : scrollback.get(cursorY).get(cursorX).getBackgroundColour();
     }
@@ -390,7 +390,7 @@ public class TerminalBuffer {
      * @return the foreground colour stored in the cell at the current cursor's position if the cursor is not beyond the end of the line
      */
     public Colour getForegroundColourAtCursorPos() {
-        if(scrollback.get(cursorY).size() == cursorX) return null; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
+        if(scrollback.get(cursorY).size() == cursorX) return Colour.DEFAULT; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
         return scrollback.get(cursorY).get(cursorX).getForegroundColour() == Colour.DEFAULT ? this.screenForegroundColour : scrollback.get(cursorY).get(cursorX).getForegroundColour();
     }
@@ -399,7 +399,7 @@ public class TerminalBuffer {
      * @return the style stored in the cell at the current cursor's position if the cursor is not beyond the end of the line
      */
     public Style getStyleAtCursorPos() {
-        if(scrollback.get(cursorY).size() == cursorX) return null; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
+        if(scrollback.get(cursorY).size() == cursorX) return Style.NONE; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
         return scrollback.get(cursorY).get(cursorX).getStyleFlag();
     }

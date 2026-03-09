@@ -353,6 +353,74 @@ public class TerminalBufferTest {
     }
 
     /**
+     * Retrieving buffer content tests
+     */
+
+    @Test
+    void testGetChar() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+
+        assertEquals('a', testBuffer.getCharAtCursorPos());
+    }
+
+    @Test
+    void testGetCharEndOfLine() {
+        testBuffer.insertText('a');
+
+        assertEquals(null, testBuffer.getCharAtCursorPos());
+    }
+
+    @Test
+    void testGetBackgroundColour() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+
+        assertEquals(Colour.BLACK, testBuffer.getBackgroundColourAtCursorPos());
+    }
+
+    @Test
+    void testGetBackgroundColourEndOfLine() {
+        testBuffer.insertText('a');
+
+        assertEquals(Colour.DEFAULT, testBuffer.getBackgroundColourAtCursorPos());
+    }
+
+    @Test
+    void testGetForegroundColour() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+
+        assertEquals(Colour.WHITE, testBuffer.getForegroundColourAtCursorPos());
+    }
+
+    @Test
+    void testGetForegroundColourEndOfLine() {
+        testBuffer.insertText('a');
+
+        assertEquals(Colour.DEFAULT, testBuffer.getForegroundColourAtCursorPos());
+    }
+
+    @Test
+    void testGetStyle() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        testBuffer.setStyleAtCursorPos(Style.BOLD);
+
+        assertEquals(Style.BOLD, testBuffer.getStyleAtCursorPos());
+    }
+
+    @Test
+    void testGetStyleEndOfLine() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        testBuffer.setStyleAtCursorPos(Style.BOLD);
+        testBuffer.moveCursorX(1);
+
+        assertEquals(Style.NONE, testBuffer.getStyleAtCursorPos());
+    }
+
+    /**
      * Clearing the buffer tests
      */
 
@@ -391,9 +459,6 @@ public class TerminalBufferTest {
         assertEquals(0, testBuffer.getCursorY());
     }
 
-    /**
-     * Tests clearing the screen
-     */
     @Test
     void testClearScreen() {
         for(int i = 0; i < 3; i++) {
