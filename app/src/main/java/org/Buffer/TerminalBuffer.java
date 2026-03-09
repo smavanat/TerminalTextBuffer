@@ -2,6 +2,10 @@ package org.Buffer;
 
 import java.util.ArrayList;
 
+/**
+ * NOTE: Lines in the screen are set to have their wrapped attribute set to true if they wrap from the previous line,
+ *       not if they wrap onto the next one
+ */
 public class TerminalBuffer {
     private ArrayList<ArrayList<CharacterCell>> scrollback; //A list of all logical lines present in this terminal buffer
     private CircularArray<TerminalLine> screen; //A list of all the lines in the screen
@@ -10,8 +14,8 @@ public class TerminalBuffer {
     private Integer scrollMaximum; //Maximum number of characters that can be held in the scrollback or scrollforward
     private Colour screenBackgroundColour; //The background colour of the screen. Defaults to black
     private Colour screenForegroundColour; //The foreground colour of the screen. Defaults to white
-    private Integer cursorX; //X position of the cursor. The x-axis moves from left to right
-    private Integer cursorY; //Y position of the cursor. The y-axis moves from top to bottom
+    private Integer cursorX; //Logical X position of the cursor. The x-axis moves from left to right.
+    private Integer cursorY; //Logical Y position of the cursor. The y-axis moves from top to bottom
     private Integer bottomIndex; //Internal line pointer into the scollback buffer
 
     /**
@@ -23,8 +27,8 @@ public class TerminalBuffer {
      * @param foregroundColour the foreground colour of the screen
      */
     public TerminalBuffer(Integer width, Integer height, Integer scrollMax, Colour backgroundColour, Colour foregroundColour) {
-        this.width = 0;
-        this.height = 0;
+        this.width = width;
+        this.height = height;
         this.scrollMaximum = scrollMax > 0 ? scrollMax : Integer.MAX_VALUE;
         this.screenBackgroundColour = backgroundColour;
         this.screenForegroundColour = foregroundColour;
@@ -36,6 +40,7 @@ public class TerminalBuffer {
         this.scrollback = new ArrayList<>(height * 2);
         this.scrollback.add(new ArrayList<CharacterCell>(this.width));
         this.screen = new CircularArray<>();
+        screen.addToFront(new TerminalLine(this.width));
     }
 
     /**
@@ -48,6 +53,17 @@ public class TerminalBuffer {
         this(width, height, scrollMax, Colour.BLACK, Colour.WHITE);
     }
 
+    public Integer getScreenCursorX() {
+        return this.cursorX % this.width;
+    }
+
+    /**
+     * Need to implement
+     */
+    public Integer getScreenCursorY() {
+        return 0;
+    }
+
     //Getters for cursor X and Y
     public Integer getCursorX() {
         return this.cursorX;
@@ -58,19 +74,47 @@ public class TerminalBuffer {
     }
 
     /**
-     * Sets a cursor's x position to the specified position, clamped between [0, width)
+     * Sets a cursor's x position to the specified position, clamped between [0, logical line width)
      * @param val the new x position to move the cursor to
      */
     public void setCursorX(Integer val) {
-        cursorX = Math.max(0, Math.min(val, width-1));
+        cursorX = Math.max(0, Math.min(val, scrollback.get(cursorY).size()-1));
     }
 
     /**
-     * Sets a cursor's y position to the specified position, clamped between [0, height)
+     * Sets a cursor's y position to the specified position, clamped between [0, scrollback height)
      * @param val the new x position to move the cursor to
      */
     public void setCursorY(Integer val) {
-        cursorY = Math.max(0, Math.min(val, height-1));
+        Integer screenTop = getLogicalScreenTop();
+        Integer clampedVal = Math.max(0, Math.min(val, scrollback.size()-1));
+
+        if(clampedVal < screenTop) {
+            scroll(clampedVal - screenTop);
+        }
+        else if(clampedVal > bottomIndex) {
+            scroll(clampedVal - bottomIndex);
+        }
+
+        cursorY = clampedVal;
+    }
+
+    /**
+     * Helper function to get the logical line at the top of the current screen
+     * @return the index of the logical line at the top of the screen
+     */
+    private int getLogicalScreenTop() {
+        int screenTop = bottomIndex; //The logical line at the top of the screen
+        int remainingRows = this.height; //Number of rows we haven't seen to be filled by a logical line in the screen
+
+        while(screenTop > 0 && remainingRows > 0) {
+            int lineRows = (scrollback.get(screenTop-1).size() + this.width-1)/width; //Get the cieling of the number of rows this line takes up
+            if(lineRows > remainingRows) break; //If the number of lines the current screen top takes up is more than the remaining unfilled rows on the screen, break
+            remainingRows -= lineRows; //Otherwise decrease the number of remaining unfilled rows on the screen
+            screenTop--; //Move to the next line up
+        }
+
+        return screenTop;
     }
 
     /**
@@ -79,22 +123,7 @@ public class TerminalBuffer {
      * @param val the number of steps to move
      */
     public void moveCursorX(Integer val) {
-        //If we would move beyond the limits of the current line, check if the previous line is wrapped, and if it is, move to its end
-        if(cursorX + val < 0 && screen.get(cursorY).getWrapped()) {
-            //Move cursor to end of previous line
-            moveCursorY(-1);
-            setCursorX(this.width-1);
-        }
-        //If we would move beyond the limits of the current line, check if the next line is wrapped, and if it is, move to its start
-        else if(cursorX + val > screen.get(cursorY).size() && screen.get(cursorY+1).getWrapped()) {
-            //Move cursor to start of next line
-            setCursorX(0);
-            moveCursorY(1);
-        }
-        //Otherwise just move the cursor
-        else {
-            setCursorX(cursorX + val);
-        }
+        setCursorX(cursorX + val);
     }
     /**
      * Moves the cursor's y position by some amount of steps. If the movement would cause the cursor to move off the screen, scroll
@@ -102,16 +131,7 @@ public class TerminalBuffer {
      * @param val the number of steps to move
      */
     public void moveCursorY(Integer val) {
-        //If the new position is below the current screen bottom, scroll down
-        if(cursorY + val >= this.height){
-            scroll(val - this.height);
-            setCursorY(0); //Set the cursor to the top of the screen
-        }
-        //If the new position is above the current height, scroll up
-        else if (cursorY + val < 0) {
-            scroll(cursorY + val);
-            setCursorY(this.height - 1); //Set the cursor to the bottom of the screen
-        }
+        setCursorY(cursorY + val);
     }
 
     /**
@@ -122,6 +142,10 @@ public class TerminalBuffer {
     public void scroll(Integer spaces) {
         bottomIndex = Math.max(0, Math.min(bottomIndex + spaces, scrollback.size() - 1)); //Calculate the new screen bottom
 
+        rebuildScreen();
+    }
+
+    private void rebuildScreen() {
         screen.clear(); //Scroll down
 
         int start = Math.max(0, bottomIndex - height + 1); //Get the top of the new screen
@@ -139,7 +163,7 @@ public class TerminalBuffer {
         int index = 0;
 
         while(index < logical.size()) {
-            TerminalLine screenLine = new TerminalLine(this.width, !(index < this.width)); //Creating a new screen line
+            TerminalLine screenLine = new TerminalLine(this.width, index != 0); //Creating a new screen line
 
             for(int x = 0; x < width && index < logical.size(); x++) { //Copying the character cells over
                 screenLine.add(logical.get(index++));
@@ -155,11 +179,27 @@ public class TerminalBuffer {
     }
 
     /**
-     * Adds an empty line to the bottom of the screen and scrolls down
+     * Adds an empty line to the bottom of the screen and moves the cursor down one line, scrolling if necessary
      */
     public void createNewLine() {
         scrollback.add(new ArrayList<CharacterCell>(this.width));
-        scroll(1);
+        if(scrollback.size() > scrollMaximum) {
+            scrollback.remove(0);
+            bottomIndex = Math.max(0, bottomIndex - 1);
+            cursorY = Math.max(0, cursorY - 1);
+        }
+        cursorY++;
+        bottomIndex = Math.min(scrollback.size() - 1, bottomIndex + 1);
+        rebuildScreen();
+    }
+
+    /**
+     * Inserts text at the mouse cursor's position, only if the cursor is at the bottom of the screen and scrollback
+     * @param text the new character to add
+     */
+    public void insertText(Character text) {
+        scrollback.get(cursorY).add(cursorX, new CharacterCell(text));
+        moveCursorX(1);
     }
 
     /**
@@ -175,5 +215,21 @@ public class TerminalBuffer {
     public void clearEntireBuffer() {
         screen.clear();
         scrollback.clear();
+    }
+
+    /**
+     * Returns entire screen content as a string. Does not handle characters or styles
+     */
+    public String getScreenContents() {
+        StringBuilder buf = new StringBuilder();
+
+        for(int i = 0; i < screen.size(); i++) {
+            for(int j = 0; j < screen.get(i).size(); j++) {
+                buf.append(screen.get(i).get(j).getCharacter());
+            }
+            if(i < screen.size() - 1 && !screen.get(i+1).getWrapped()) buf.append('\n');
+        }
+
+        return buf.toString();
     }
 }

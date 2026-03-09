@@ -28,6 +28,14 @@ public class CharacterCell {
         this.styleFlag = sf;
     }
 
+    /**
+     * Constructor for CharacterCell where all other attributes are set to default values, i.e. DEFAULT, DEFAULT and NONE
+     * @param c the character this CharacterCell should contain
+     */
+    public CharacterCell(Character c) {
+        this(c, Colour.DEFAULT, Colour.DEFAULT, Style.NONE);
+    }
+
     //Getters and setters for all of the elements in this class
     public Character getCharacter() {
         return this.character;
