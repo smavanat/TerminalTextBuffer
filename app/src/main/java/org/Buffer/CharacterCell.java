@@ -65,4 +65,19 @@ public class CharacterCell {
     public void setStyleFlag(Style val) {
         this.styleFlag = val;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if(this == o) return true;
+        if(o == null || this.getClass() != o.getClass()) return false;
+
+        CharacterCell other = (CharacterCell) o;
+
+        if(this.character.equals(other.getCharacter()) &&
+            this.foregroundColour.equals(other.getForegroundColour()) &&
+            this.backgroundColour.equals(other.getBackgroundColour()) &&
+            this.styleFlag.equals(other.getStyleFlag())) return true;
+
+        return false;
+    }
 }

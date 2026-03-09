@@ -57,10 +57,11 @@ public class TerminalLine {
      * @param cell the new cell to add
      */
     public void add(int index, CharacterCell cell) {
-        if(index < 0 || index >= characters.size())
+        if(index < 0 || index > characters.size())
             throw new IndexOutOfBoundsException();
 
-        characters.add(index, cell);
+        if(characters.size() < width)
+            characters.add(index, cell);
     }
 
     /**
@@ -68,7 +69,7 @@ public class TerminalLine {
      * @param cell the new cell to add
      */
     public void add(CharacterCell cell) {
-        if(characters.size() <= width)
+        if(characters.size() < width)
             characters.add(cell);
     }
 
