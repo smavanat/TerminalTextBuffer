@@ -1,11 +1,10 @@
 package org.Buffer;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 
 public class TerminalBuffer {
     private ArrayList<ArrayList<CharacterCell>> scrollback; //A list of all logical lines present in this terminal buffer
-    private ArrayDeque<TerminalLine> screen; //A list of all the lines in the screen
+    private CircularArray<TerminalLine> screen; //A list of all the lines in the screen
     private Integer width; //Width of the screen represented by the buffer in characters
     private Integer height; //Height of the screen represented by the buffer in lines
     private Integer scrollMaximum; //Maximum number of characters that can be held in the scrollback or scrollforward
@@ -36,7 +35,7 @@ public class TerminalBuffer {
 
         this.scrollback = new ArrayList<>(height * 2);
         this.scrollback.add(new ArrayList<CharacterCell>(this.width));
-        this.screen = new ArrayDeque<>();
+        this.screen = new CircularArray<>();
     }
 
     /**
@@ -80,7 +79,22 @@ public class TerminalBuffer {
      * @param val the number of steps to move
      */
     public void moveCursorX(Integer val) {
-        setCursorX(cursorX + val);
+        //If we would move beyond the limits of the current line, check if the previous line is wrapped, and if it is, move to its end
+        if(cursorX + val < 0 && screen.get(cursorY).getWrapped()) {
+            //Move cursor to end of previous line
+            moveCursorY(-1);
+            setCursorX(this.width-1);
+        }
+        //If we would move beyond the limits of the current line, check if the next line is wrapped, and if it is, move to its start
+        else if(cursorX + val > screen.get(cursorY).size() && screen.get(cursorY+1).getWrapped()) {
+            //Move cursor to start of next line
+            setCursorX(0);
+            moveCursorY(1);
+        }
+        //Otherwise just move the cursor
+        else {
+            setCursorX(cursorX + val);
+        }
     }
     /**
      * Moves the cursor's y position by some amount of steps. If the movement would cause the cursor to move off the screen, scroll
@@ -125,18 +139,41 @@ public class TerminalBuffer {
         int index = 0;
 
         while(index < logical.size()) {
-            TerminalLine screenLine = new TerminalLine(this.width); //Creating a new screen line
+            TerminalLine screenLine = new TerminalLine(this.width, !(index < this.width)); //Creating a new screen line
 
             for(int x = 0; x < width && index < logical.size(); x++) { //Copying the character cells over
                 screenLine.add(logical.get(index++));
             }
 
-            screen.addLast(screenLine); //Adding it to the bottom of the screen
+            screen.addToBack(screenLine); //Adding it to the bottom of the screen
 
             //Removing excess screen lines
             if(screen.size() > height) {
-                screen.removeFirst();
+                screen.removeFromFront();
             }
         }
+    }
+
+    /**
+     * Adds an empty line to the bottom of the screen and scrolls down
+     */
+    public void createNewLine() {
+        scrollback.add(new ArrayList<CharacterCell>(this.width));
+        scroll(1);
+    }
+
+    /**
+     * Clears the lines from the screen. Does not remove anything from the scrollback
+     */
+    public void clearScreen() {
+        screen.clear();
+    }
+
+    /**
+     * Clears all data in screen and scrollback buffers
+     */
+    public void clearEntireBuffer() {
+        screen.clear();
+        scrollback.clear();
     }
 }
