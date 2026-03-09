@@ -19,6 +19,10 @@ public class TerminalBuffer {
     private Integer bottomIndex; //Internal line pointer into the scollback buffer
 
     /**
+     * CONSTRUCTORS
+     */
+
+    /**
      * Constructor for a TerminalBuffer including paramters for screen colours
      * @param width the width of the screen represented by the buffer in characters
      * @param height the height of the screen represented by the buffer in lines
@@ -52,6 +56,10 @@ public class TerminalBuffer {
     public TerminalBuffer(Integer width, Integer height, Integer scrollMax) {
         this(width, height, scrollMax, Colour.BLACK, Colour.WHITE);
     }
+
+    /**
+     * GETTERS AND SETTERS
+     */
 
     /**
      * @return the on-screen x position of the cursor
@@ -89,6 +97,26 @@ public class TerminalBuffer {
         return this.cursorY;
     }
 
+    public Colour getScreenBackgroundColour() {
+        return this.screenBackgroundColour;
+    }
+
+    public Colour getScreenForegroundColour() {
+        return this.screenForegroundColour;
+    }
+
+    public void setScreenBackgroundColour(Colour val) {
+        this.screenBackgroundColour = val;
+    }
+
+    public void setScreenForegroundColour(Colour val) {
+        this.screenForegroundColour = val;
+    }
+
+    /**
+     * CURSOR OPERATIONS
+     */
+
     /**
      * Sets a cursor's x position to the specified position, clamped between [0, logical line width)
      * @param val the new x position to move the cursor to
@@ -116,35 +144,9 @@ public class TerminalBuffer {
     }
 
     /**
-     * Helper function to get the logical line at the top of the current screen
-     * @return the index of the logical line at the top of the screen
-     */
-    private int getLogicalScreenTop() {
-        int screenTop = bottomIndex; //The logical line at the top of the screen
-        int remainingRows = this.height; //Number of rows we haven't seen to be filled by a logical line in the screen
-
-        while(screenTop > 0 && remainingRows > 0) {
-            int lineRows = logicalToTerminal(screenTop-1);
-            if(lineRows > remainingRows) break; //If the number of lines the current screen top takes up is more than the remaining unfilled rows on the screen, break
-            remainingRows -= lineRows; //Otherwise decrease the number of remaining unfilled rows on the screen
-            screenTop--; //Move to the next line up
-        }
-
-        return screenTop;
-    }
-
-    /**
-     * Helper function to see how many Terminal screen lines the logical line at the given index takes up
-     */
-    private int logicalToTerminal(int index) {
-        return (scrollback.get(index).size() + this.width-1) /this.width;
-    }
-
-    /**
      * Moves the cursor's x position by some amount of steps. Negative values move to the left, positive values move to the right.
      * The cursor's end position is clamped between [0, line_width), where line_width is the number of characters in the unwrapped line the cursor is on
-     * @param val the number of steps to move
-     */
+     * @param val the number of steps to move */
     public void moveCursorX(Integer val) {
         setCursorX(cursorX + val);
     }
@@ -158,6 +160,10 @@ public class TerminalBuffer {
     }
 
     /**
+     * BUFFER MANIPULATION
+     */
+
+    /**
      * Moves the bottom index of the screen by some number of spaces
      * Clears the current screen buffer and rebuilds it using the new bottom of the screen as a reference into the scrollback
      * @param spaces the number of spaces to scroll by. negative means down, positive means up
@@ -167,6 +173,264 @@ public class TerminalBuffer {
 
         rebuildScreen();
     }
+
+    /**
+     * Adds an empty line to the bottom of the screen and removes extra lines if we are over the scrollback buffer.
+     * Moves the cursor down one line, scrolling if necessary
+     */
+    public void createNewLine() {
+        addNewLine();
+        rebuildScreen();
+    }
+
+    /**
+     * Clears the lines from the screen. Does not remove anything from the scrollback
+     */
+    public void clearScreen() {
+        screen.clear();
+        addNewLine();
+        screen.addToFront(new TerminalLine(width));
+    }
+
+    /**
+     * Clears all data in screen and scrollback buffers and resets the cursor position
+     */
+    public void clearEntireBuffer() {
+        //Clearing buffers and setting them to only have one blank element
+        screen.clear();
+        scrollback.clear();
+        screen.addToFront(new TerminalLine(this.width));
+        scrollback.add(new ArrayList<CharacterCell>(this.width));
+
+        //Resetting cursor position
+        cursorX = 0;
+        cursorY = 0;
+    }
+
+    /**
+     * TEXT EDITING -> The user will only be able to edit text if it is on the bottom line of the screen
+     */
+
+    /**
+     * Inserts text at the mouse cursor's position only if the cursor is at the bottom of the screen and scrollback
+     * Moves the mouse one position to the right
+     * @param text the new character to add
+     * @return true if the text was inserted, false if the cursor is not at the bottom line
+     */
+    public boolean insertText(Character text) {
+        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+
+        int oldLines = logicalToTerminal(cursorY);
+        scrollback.get(cursorY).add(cursorX, new CharacterCell(text));
+        cursorX++;
+
+        if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
+
+        return true;
+    }
+
+    /**
+     * Overwrites text at the mouse cursor's current position only if the cursor is at the bottom of the screen and scrollback.
+     * Moves the mouse one position to the right, stopping if it has reached the end of the existing text
+     * @param text the new character to add
+     * @return true if the text was overwritten, false if the cursor is not at the bottom line
+     */
+    public boolean overwriteText(Character text) {
+        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+
+        scrollback.get(cursorY).get(cursorX).setCharacter(text); //Overwriting the character in this position
+        moveCursorX(1);
+
+        return true;
+    }
+
+    /**
+     * Sets the background colour at the mouse cursor's current position only if the cursor is at the bottom of the screen and scrollback.
+     * Does not move the mouse position
+     * @param colour the new background colour of the cell
+     * @return true if the text was overwritten, false if the cursor is not at the bottom line
+     */
+    public boolean setBackgroundColourAtCursorPos(Colour colour) {
+        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+
+        scrollback.get(cursorY).get(cursorX).setBackgroundColour(colour); //Overwriting the colour in this position
+        return true;
+    }
+
+    /**
+     * Sets the foreground colour at the mouse cursor's current position only if the cursor is at the bottom of the screen and scrollback.
+     * Does not move the mouse position
+     * @param colour the new foreground colour of the cell
+     * @return true if the text was overwritten, false if the cursor is not at the bottom line
+     */
+    public boolean setForegroundColourAtCursorPos(Colour colour) {
+        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+
+        scrollback.get(cursorY).get(cursorX).setForegroundColour(colour); //Overwriting the colour in this position
+        return true;
+    }
+
+    /**
+     * Sets the style at the mouse cursor's current position only if the cursor is at the bottom of the screen and scrollback.
+     * Does not move the mouse position
+     * @param style the new style of the cell
+     * @return true if the text was overwritten, false if the cursor is not at the bottom line
+     */
+    public boolean setStyleAtCursorPos(Style style) {
+        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+
+        scrollback.get(cursorY).get(cursorX).setStyleFlag(style); //Overwriting the style in this position
+        return true;
+    }
+
+    /**
+     * Clears the last line in the buffer and rebuilds the screen if necessary. Only works if the cursor is at the bottom line
+     * @return true if the line was cleared, false if the cursor is not at the bottom line
+     */
+    public boolean emptyLine() {
+        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+
+        scrollback.get(cursorY).clear();
+        rebuildScreen(); //Remake the layout
+        return true;
+    }
+
+    /**
+     * Fills a terminal line with the specified character starting from the cursor's current screen position
+     * e.g. if the screen's cursor position is 1 and the width is 4, 3 cells will be filled
+     * Exits early if the cursor is not at the bottom line
+     * Since the input is a {@link CharacterCell}, the colours and style of the character can be specified
+     * @return true if the line was cleared, false if the cursor is not at the bottom line
+     */
+    public boolean fillLineWithChar(CharacterCell fill) {
+        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+
+        for(int i = getScreenCursorX(); i < width; i++) {
+            scrollback.get(cursorY).add(fill);
+            cursorX++; //Moving the cursor
+        }
+        rebuildScreen();
+
+        return true;
+    }
+
+    /**
+     * Fills a terminal line with the specified character starting from the cursor's current screen position
+     * e.g. if the screen's cursor position is 1 and the width is 4, 3 cells will be filled
+     * Exits early if the cursor is not at the bottom line
+     * Since the input is a {@link Character}, the colours and style of the character will be set to the TerminalBuffer's defaults
+     * @return true if the line was cleared, false if the cursor is not at the bottom line
+     */
+    public boolean fillLineWithChar(Character fill) {
+        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+
+        CharacterCell defaultFill = new CharacterCell(fill);
+        for(int i = getScreenCursorX(); i < width; i++) {
+            scrollback.get(cursorY).add(defaultFill);
+            cursorX++; //Moving the cursor
+        }
+        rebuildScreen();
+
+        return true;
+    }
+
+    /**
+     * RETRIEVING BUFFER CONTENT
+     */
+
+    /**
+     * @return the character stored in the cell at the current cursor's position
+     */
+    public Character getCharAtCursorPos() {
+        return scrollback.get(cursorY).get(cursorX).getCharacter();
+    }
+
+    /**
+     * @return the background colour stored in the cell at the current cursor's position
+     */
+    public Colour getBackgroundColourAtCursorPos() {
+        return scrollback.get(cursorY).get(cursorX).getBackgroundColour() == Colour.DEFAULT ? this.screenBackgroundColour : scrollback.get(cursorY).get(cursorX).getBackgroundColour();
+    }
+
+    /**
+     * @return the foreground colour stored in the cell at the current cursor's position
+     */
+    public Colour getForegroundColourAtCursorPos() {
+        return scrollback.get(cursorY).get(cursorX).getForegroundColour() == Colour.DEFAULT ? this.screenForegroundColour : scrollback.get(cursorY).get(cursorX).getForegroundColour();
+    }
+
+    /**
+     * @return the style stored in the cell at the current cursor's position
+     */
+    public Style getStyleAtCursorPos() {
+        return scrollback.get(cursorY).get(cursorX).getStyleFlag();
+    }
+
+    /**
+     * @return the entire terminal line the cursor is currently on as a {@link String}
+     */
+    public String getScreenLine() {
+        StringBuilder buf = new StringBuilder();
+        TerminalLine line = screen.get(getScreenCursorY());
+
+        for(int i = 0; i < line.size(); i++) {
+            buf.append(line.get(i).getCharacter());
+        }
+        buf.append('\n');
+
+        return buf.toString();
+    }
+
+
+    /**
+     * @return the entire logical line the cursor is currently on as a {@link String}
+     */
+    public String getScrollLine() {
+        StringBuilder buf = new StringBuilder();
+        ArrayList<CharacterCell> line = scrollback.get(cursorY);
+
+        for(int i = 0; i < line.size(); i++) {
+            buf.append(line.get(i).getCharacter());
+        }
+        buf.append('\n');
+
+        return buf.toString();
+    }
+
+    /**
+     * @return entire screen content as a string. Does not handle colours or styles
+     */
+    public String getScreenContents() {
+        StringBuilder buf = new StringBuilder();
+
+        for(int i = 0; i < screen.size(); i++) {
+            for(int j = 0; j < screen.get(i).size(); j++) {
+                buf.append(screen.get(i).get(j).getCharacter());
+            }
+            buf.append("\n")    ;
+        }
+
+        return buf.toString();
+    }
+
+    /**
+     * @return the entire scrollback content as a string. Does not handle colours or styles
+     */
+    public String getScrollbackContents() {
+        StringBuilder buf = new StringBuilder();
+
+        for(int i = 0; i < scrollback.size(); i++) {
+            for(int j = 0; j < scrollback.get(i).size(); j++) {
+                buf.append(scrollback.get(i).get(j).getCharacter());
+            }
+            buf.append('\n');
+        }
+        return buf.toString();
+    }
+
+    /**
+     * HELPER FUNCTIONS
+     */
 
     /**
      * Rebuilds the screen from the bottom index
@@ -205,15 +469,6 @@ public class TerminalBuffer {
     }
 
     /**
-     * Adds an empty line to the bottom of the screen and removes extra lines if we are over the scrollback buffer.
-     * Moves the cursor down one line, scrolling if necessary
-     */
-    public void createNewLine() {
-        addNewLine();
-        rebuildScreen();
-    }
-
-    /**
      * Adds an empty line to the bottom of the screen and removes extra lines if we are over the scrollback buffer
      * Does not move the screen contents
      */
@@ -232,69 +487,28 @@ public class TerminalBuffer {
     }
 
     /**
-     * Inserts text at the mouse cursor's position, only if the cursor is at the bottom of the screen and scrollback
-     * @param text the new character to add
+     * Helper function to get the logical line at the top of the current screen
+     * @return the index of the logical line at the top of the screen
      */
-    public void insertText(Character text) {
-        int oldLines = logicalToTerminal(cursorY);
-        scrollback.get(cursorY).add(cursorX, new CharacterCell(text));
-        cursorX++;
+    private int getLogicalScreenTop() {
+        int screenTop = bottomIndex; //The logical line at the top of the screen
+        int remainingRows = this.height; //Number of rows we haven't seen to be filled by a logical line in the screen
 
-        if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
-    }
-
-    /**
-     * Clears the lines from the screen. Does not remove anything from the scrollback
-     */
-    public void clearScreen() {
-        screen.clear();
-        addNewLine();
-        screen.addToFront(new TerminalLine(width));
-    }
-
-    /**
-     * Clears all data in screen and scrollback buffers and resets the cursor position
-     */
-    public void clearEntireBuffer() {
-        //Clearing buffers and setting them to only have one blank element
-        screen.clear();
-        scrollback.clear();
-        screen.addToFront(new TerminalLine(this.width));
-        scrollback.add(new ArrayList<CharacterCell>(this.width));
-
-        //Resetting cursor position
-        cursorX = 0;
-        cursorY = 0;
-    }
-
-    /**
-     * Returns entire screen content as a string. Does not handle colours or styles
-     */
-    public String getScreenContents() {
-        StringBuilder buf = new StringBuilder();
-
-        for(int i = 0; i < screen.size(); i++) {
-            for(int j = 0; j < screen.get(i).size(); j++) {
-                buf.append(screen.get(i).get(j).getCharacter());
-            }
-            buf.append("\n")    ;
+        while(screenTop > 0 && remainingRows > 0) {
+            int lineRows = logicalToTerminal(screenTop-1);
+            if(lineRows > remainingRows) break; //If the number of lines the current screen top takes up is more than the remaining unfilled rows on the screen, break
+            remainingRows -= lineRows; //Otherwise decrease the number of remaining unfilled rows on the screen
+            screenTop--; //Move to the next line up
         }
 
-        return buf.toString();
+        return screenTop;
     }
 
     /**
-     * Returns the entire scrollback content as a string. Does not handle colours or styles
+     * Helper function to see how many Terminal screen lines the logical line at the given index takes up
      */
-    public String getScrollbackContents() {
-        StringBuilder buf = new StringBuilder();
-
-        for(int i = 0; i < scrollback.size(); i++) {
-            for(int j = 0; j < scrollback.get(i).size(); j++) {
-                buf.append(scrollback.get(i).get(j).getCharacter());
-            }
-            buf.append('\n');
-        }
-        return buf.toString();
+    private int logicalToTerminal(int index) {
+        return (scrollback.get(index).size() + this.width-1) /this.width;
     }
+
 }
