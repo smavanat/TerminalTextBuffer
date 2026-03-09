@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.Buffer.TerminalBuffer;
 import org.Buffer.Colour;
 import org.Buffer.Style;
+import org.Buffer.CharacterCell;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -328,6 +329,49 @@ public class TerminalBufferTest {
         testBuffer.insertText('a');
 
         assertEquals(false, testBuffer.setStyleAtCursorPos(Style.BOLD));
+    }
+
+    @Test
+    void testFillLine() {
+        testBuffer.fillLineWithChar('a');
+
+        assertEquals("aa\n", testBuffer.getScreenLine());
+
+        testBuffer.createNewLine();
+        testBuffer.fillLineWithChar(new CharacterCell('a'));
+
+        assertEquals("aa\n", testBuffer.getScreenLine());
+    }
+
+    @Test
+    void testFillLineNotOnBottom() {
+        testBuffer.createNewLine();
+        testBuffer.moveCursorY(-1);
+
+        assertEquals(false, testBuffer.fillLineWithChar('a'));
+        assertEquals(false, testBuffer.fillLineWithChar(new CharacterCell('a')));
+    }
+
+    /**
+     * Clearing the buffer tests
+     */
+
+    @Test
+    void testClearLine() {
+        testBuffer.insertText('a');
+        testBuffer.clearLine();
+
+        assertEquals("\n", testBuffer.getScrollLine());
+    }
+
+    @Test
+    void testClearLineNotOnBottom() {
+        testBuffer.insertText('a');
+        testBuffer.createNewLine();
+        testBuffer.moveCursorY(-1);
+        testBuffer.clearLine();
+
+        assertEquals("a\n", testBuffer.getScrollLine());
     }
 
     /**

@@ -315,7 +315,7 @@ public class TerminalBuffer {
      * Clears the last line in the buffer and rebuilds the screen if necessary. Only works if the cursor is at the bottom line
      * @return true if the line was cleared, false if the cursor is not at the bottom line
      */
-    public boolean emptyLine() {
+    public boolean clearLine() {
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
         scrollback.get(cursorY).clear();
@@ -327,6 +327,7 @@ public class TerminalBuffer {
      * Fills a terminal line with the specified character starting from the cursor's current screen position
      * e.g. if the screen's cursor position is 1 and the width is 4, 3 cells will be filled
      * Exits early if the cursor is not at the bottom line
+     * Moves a cursor along with the fill
      * Since the input is a {@link CharacterCell}, the colours and style of the character can be specified
      * @return true if the line was cleared, false if the cursor is not at the bottom line
      */
@@ -346,6 +347,7 @@ public class TerminalBuffer {
      * Fills a terminal line with the specified character starting from the cursor's current screen position
      * e.g. if the screen's cursor position is 1 and the width is 4, 3 cells will be filled
      * Exits early if the cursor is not at the bottom line
+     * Moves a cursor along with the fill
      * Since the input is a {@link Character}, the colours and style of the character will be set to the TerminalBuffer's defaults
      * @return true if the line was cleared, false if the cursor is not at the bottom line
      */
