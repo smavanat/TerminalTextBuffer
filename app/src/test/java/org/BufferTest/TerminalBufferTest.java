@@ -292,6 +292,19 @@ public class TerminalBufferTest {
     }
 
     @Test
+    void testInsertTextFailsWhenScrolledUp() {
+        //Create several lines so we have scrollback
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+        }
+
+        //Scroll up so bottomIndex is no longer at the bottom
+        testBuffer.scroll(-1);
+
+        assertFalse(testBuffer.insertText('a'));
+    }
+
+    @Test
     void testOverwriteText() {
         testBuffer.insertText('a');
         testBuffer.moveCursorX(-1);
@@ -311,6 +324,19 @@ public class TerminalBufferTest {
     }
 
     @Test
+    void testOverwriteTextFailsWhenScrolledUp() {
+        //Create several lines so we have scrollback
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+        }
+
+        //Scroll up so bottomIndex is no longer at the bottom
+        testBuffer.scroll(-1);
+
+        assertFalse(testBuffer.overwriteText('a'));
+    }
+
+    @Test
     void testSetBackgroundColour() {
         testBuffer.insertText('a');
         testBuffer.moveCursorX(-1);
@@ -327,6 +353,21 @@ public class TerminalBufferTest {
         testBuffer.setCursorY(0);
 
         assertEquals(false, testBuffer.setBackgroundColourAtCursorPos(Colour.GREEN));
+    }
+
+    @Test
+    void testSetBackgroundColourFailsWhenScrolledUp() {
+        //Create several lines so we have scrollback
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+            testBuffer.insertText('a');
+        }
+
+        //Scroll up so bottomIndex is no longer at the bottom
+        testBuffer.scroll(-1);
+        testBuffer.moveCursorX(-1);
+
+        assertFalse(testBuffer.setBackgroundColourAtCursorPos(Colour.RED));
     }
 
     @Test
@@ -356,6 +397,21 @@ public class TerminalBufferTest {
     }
 
     @Test
+    void testSetForegroundColourFailsWhenScrolledUp() {
+        //Create several lines so we have scrollback
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+            testBuffer.insertText('a');
+        }
+
+        //Scroll up so bottomIndex is no longer at the bottom
+        testBuffer.scroll(-1);
+        testBuffer.moveCursorX(-1);
+
+        assertFalse(testBuffer.setForegroundColourAtCursorPos(Colour.RED));
+    }
+
+    @Test
     void testSetForegroundColourEndOfLine() {
         testBuffer.insertText('a');
 
@@ -379,6 +435,21 @@ public class TerminalBufferTest {
         testBuffer.setCursorY(0);
 
         assertEquals(false, testBuffer.setStyleAtCursorPos(Style.BOLD));
+    }
+
+    @Test
+    void testSetStyleFailsWhenScrolledUp() {
+        //Create several lines so we have scrollback
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+            testBuffer.insertText('a');
+        }
+
+        //Scroll up so bottomIndex is no longer at the bottom
+        testBuffer.scroll(-1);
+        testBuffer.moveCursorX(-1);
+
+        assertFalse(testBuffer.setStyleAtCursorPos(Style.BOLD));
     }
 
     @Test
@@ -423,6 +494,21 @@ public class TerminalBufferTest {
 
         assertEquals(false, testBuffer.fillLineWithChar('a'));
         assertEquals(false, testBuffer.fillLineWithChar(new CharacterCell('a')));
+    }
+
+    @Test
+    void testFillLineFailsWhenScrolledUp() {
+        //Create several lines so we have scrollback
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+            testBuffer.insertText('a');
+        }
+
+        //Scroll up so bottomIndex is no longer at the bottom
+        testBuffer.scroll(-1);
+
+        assertFalse(testBuffer.fillLineWithChar('a'));
+        assertFalse(testBuffer.fillLineWithChar(new CharacterCell('a')));
     }
 
     /**
@@ -522,6 +608,20 @@ public class TerminalBufferTest {
         testBuffer.clearLine();
 
         assertEquals("a\n", testBuffer.getScrollLine());
+    }
+
+    @Test
+    void testClearLineFailsWhenScrolledUp() {
+        //Create several lines so we have scrollback
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+            testBuffer.insertText('a');
+        }
+
+        //Scroll up so bottomIndex is no longer at the bottom
+        testBuffer.scroll(-1);
+
+        assertFalse(testBuffer.clearLine());
     }
 
     /**
