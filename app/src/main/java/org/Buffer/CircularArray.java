@@ -138,6 +138,16 @@ public class CircularArray<T> {
     }
 
     /**
+     * Clears all of the elements in the CircularArray
+     */
+    public void clear() {
+        this.data = new Object[capacity];
+        this.size = 0;
+        this.frontptr = 0;
+        this.backptr = 0;
+    }
+
+    /**
      * Internal method to grow the size of the array by a factor of two
      * Copies all elements from the old buffer into the new buffer in sorted order
      */
