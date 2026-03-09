@@ -106,6 +106,16 @@ public class CircularArrayTest {
     }
 
     /**
+     * Test that grow works for arrays with 0 initial capacity
+     */
+    @Test
+    void testAddToZeroCapacity() {
+        testArray = new CircularArray<>(0);
+        testArray.addToFront(0);
+        assertEquals(1, testArray.size());
+    }
+
+    /**
      * CircularArray.addToBack() tests
      */
 
@@ -230,6 +240,17 @@ public class CircularArrayTest {
         }
 
         assertEquals(1, testArray.size());
+    }
+
+    /**
+     * Test that shrink works maintains size at 1;
+     */
+    @Test
+    void testShrinkMinSize() {
+        testArray = new CircularArray<>(1);
+        testArray.addToFront(0);
+        testArray.removeFromFront();
+        assertEquals(0, testArray.size());
     }
 
     /**

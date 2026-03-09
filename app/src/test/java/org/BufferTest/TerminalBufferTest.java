@@ -15,11 +15,59 @@ public class TerminalBufferTest {
     }
 
     /**
+     * Test giving a negative input for scrollMaximum
+     */
+    @Test
+    void testScrollMaxNeg() {
+        testBuffer = new TerminalBuffer(2, 2, -1);
+
+        assertEquals(Integer.MAX_VALUE, testBuffer.getScrollMaximum());
+    }
+
+    /**
      * Test that initial cursor positions are in top-left
      */
     @Test
-    void testCursorStart() {
+    void testCursorStartX() {
         assertEquals(0, testBuffer.getCursorX());
+    }
+
+    @Test
+    void testCursorStartY() {
+        assertEquals(0, testBuffer.getCursorY());
+    }
+
+    @Test
+    void testCusorStartScreenX() {
+        assertEquals(0, testBuffer.getScreenCursorX());
+    }
+
+    @Test
+    void testCursorStartScreenY() {
+        assertEquals(0, testBuffer.getScreenCursorY());
+    }
+
+    /**
+     * Testing that setting x position of the cursor is clamped
+     */
+    @Test
+    void testSetCursorX() {
+        testBuffer.setCursorX(1);
+        assertEquals(0, testBuffer.getCursorX());
+
+        testBuffer.setCursorX(-1);
+        assertEquals(0, testBuffer.getCursorX());
+    }
+
+    /**
+     * Testing that setting y position of the cursor is clamped
+     */
+    @Test
+    void testSetCursorYClamped() {
+        testBuffer.setCursorY(1);
+        assertEquals(0, testBuffer.getCursorY());
+
+        testBuffer.setCursorY(-1);
         assertEquals(0, testBuffer.getCursorY());
     }
 
@@ -34,6 +82,19 @@ public class TerminalBufferTest {
     }
 
     /**
+     * Test that lines beyond the scrollMaximum are removed
+     */
+    @Test
+    void testCreateNewLinePastScrollMax() {
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+            testBuffer.insertText((char)('0' + i));
+        }
+
+        assertEquals("1\n2\n3\n4\n", testBuffer.getScrollbackContents());
+    }
+
+    /**
      * Test that the cursor moves up and down correctly
      */
     @Test
@@ -45,7 +106,106 @@ public class TerminalBufferTest {
     }
 
     @Test
-    void testAddText() {
+    void testMoveX() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        assertEquals(0, testBuffer.getCursorX());
+        assertEquals(0, testBuffer.getScreenCursorX());
+    }
 
+    /**
+     * Test to make sure that text is inserted correctly
+     */
+    @Test
+    void testInsertText() {
+        testBuffer.insertText('a');
+
+        assertEquals("a\n", testBuffer.getScreenContents());
+    }
+
+    /**
+     * Test to make sure that cursor's x position moves when text is inserted
+     */
+    @Test void testInsertTextCursorPos() {
+        testBuffer.insertText('a');
+        assertEquals(1, testBuffer.getCursorX());
+    }
+
+    /**
+     * Test to make sure that inserted text wraps
+     */
+    @Test
+    void testInsertTextWrapLine() {
+        for(int i = 0; i < 3; i++) {
+            testBuffer.insertText('a');
+        }
+
+        assertEquals("aa\na\n", testBuffer.getScreenContents());
+    }
+
+    /**
+     * Test that setting the Y cursor position updates the screen contents
+     */
+    void testSetCursorYScroll() {
+        for(int i = 0; i < 3; i++) {
+            testBuffer.insertText((char)('0' + i));
+        }
+
+        testBuffer.setCursorY(0);
+        assertEquals("0\n1\n", testBuffer.getScreenContents());
+
+        testBuffer.setCursorY(2);
+        assertEquals("1\n2\n", testBuffer.getScreenContents());
+    }
+
+    /**
+     * Check that scrolling works
+     */
+    @Test
+    void testCursorYScroll() {
+        for(int i = 0; i < 3; i++) {
+            testBuffer.createNewLine();
+            testBuffer.insertText((char)('0' + i));
+        }
+
+        testBuffer.scroll(-1);
+        assertEquals("0\n1\n", testBuffer.getScreenContents());
+
+        testBuffer.scroll(1);
+        assertEquals("1\n2\n", testBuffer.getScreenContents());
+    }
+
+    /**
+     * Check that clearing the screen and scrollback buffer works
+     */
+    @Test
+    void testClearScrollback() {
+        for(int i = 0; i < 3; i++) {
+            testBuffer.insertText((char)('0' + i));
+        }
+
+        testBuffer.clearEntireBuffer();
+
+        assertEquals("\n", testBuffer.getScrollbackContents());
+        assertEquals("\n", testBuffer.getScreenContents());
+        assertEquals(0, testBuffer.getCursorX());
+        assertEquals(0, testBuffer.getCursorY());
+    }
+
+    /**
+     * Tests clearing the screen
+     */
+    @Test
+    void testClearScreen() {
+        for(int i = 0; i < 3; i++) {
+            testBuffer.insertText((char)('0' + i));
+        }
+
+        testBuffer.clearScreen();
+
+        assertEquals("012\n\n", testBuffer.getScrollbackContents());
+        assertEquals("\n", testBuffer.getScreenContents());
+        assertEquals(0, testBuffer.getScreenCursorX());
+        assertEquals(0, testBuffer.getScreenCursorY());
     }
 }

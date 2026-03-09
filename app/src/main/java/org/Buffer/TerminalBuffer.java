@@ -29,7 +29,7 @@ public class TerminalBuffer {
     public TerminalBuffer(Integer width, Integer height, Integer scrollMax, Colour backgroundColour, Colour foregroundColour) {
         this.width = width;
         this.height = height;
-        this.scrollMaximum = scrollMax > 0 ? scrollMax : Integer.MAX_VALUE;
+        this.scrollMaximum = scrollMax >= 0 ? scrollMax : Integer.MAX_VALUE;
         this.screenBackgroundColour = backgroundColour;
         this.screenForegroundColour = foregroundColour;
 
@@ -39,7 +39,7 @@ public class TerminalBuffer {
 
         this.scrollback = new ArrayList<>(height * 2);
         this.scrollback.add(new ArrayList<CharacterCell>(this.width));
-        this.screen = new CircularArray<>();
+        this.screen = new CircularArray<>(height);
         screen.addToFront(new TerminalLine(this.width));
     }
 
@@ -53,18 +53,34 @@ public class TerminalBuffer {
         this(width, height, scrollMax, Colour.BLACK, Colour.WHITE);
     }
 
+    /**
+     * @return the on-screen x position of the cursor
+     */
     public Integer getScreenCursorX() {
         return this.cursorX % this.width;
     }
 
     /**
-     * Need to implement
+     * @return the on-screen y position of the cursor
      */
     public Integer getScreenCursorY() {
-        return 0;
+        int screenY = this.screen.size()-1; //Need it to be number of actual lines in the screen rather than height to avoid errors when not enough lines to fill the whole screen
+        int logicalY = bottomIndex;
+
+        //See how far up in the screen the cursor's logical line is
+        while(logicalY != cursorY) {
+            screenY -= logicalToTerminal(logicalY);
+            logicalY--;
+        }
+        //See how many extra lines the characters after the logical x-position of the cursor are
+        return screenY - ((scrollback.get(cursorY).size() - cursorX - 1 + this.width-1)/this.width);
     }
 
-    //Getters for cursor X and Y
+    public Integer getScrollMaximum() {
+        return this.scrollMaximum;
+    }
+
+    //Getters for logical cursor X and Y
     public Integer getCursorX() {
         return this.cursorX;
     }
@@ -108,13 +124,20 @@ public class TerminalBuffer {
         int remainingRows = this.height; //Number of rows we haven't seen to be filled by a logical line in the screen
 
         while(screenTop > 0 && remainingRows > 0) {
-            int lineRows = (scrollback.get(screenTop-1).size() + this.width-1)/width; //Get the cieling of the number of rows this line takes up
+            int lineRows = logicalToTerminal(screenTop-1);
             if(lineRows > remainingRows) break; //If the number of lines the current screen top takes up is more than the remaining unfilled rows on the screen, break
             remainingRows -= lineRows; //Otherwise decrease the number of remaining unfilled rows on the screen
             screenTop--; //Move to the next line up
         }
 
         return screenTop;
+    }
+
+    /**
+     * Helper function to see how many Terminal screen lines the logical line at the given index takes up
+     */
+    private int logicalToTerminal(int index) {
+        return (scrollback.get(index).size() + this.width-1) /this.width;
     }
 
     /**
@@ -145,6 +168,9 @@ public class TerminalBuffer {
         rebuildScreen();
     }
 
+    /**
+     * Rebuilds the screen from the bottom index
+     */
     private void rebuildScreen() {
         screen.clear(); //Scroll down
 
@@ -179,18 +205,30 @@ public class TerminalBuffer {
     }
 
     /**
-     * Adds an empty line to the bottom of the screen and moves the cursor down one line, scrolling if necessary
+     * Adds an empty line to the bottom of the screen and removes extra lines if we are over the scrollback buffer.
+     * Moves the cursor down one line, scrolling if necessary
      */
     public void createNewLine() {
+        addNewLine();
+        rebuildScreen();
+    }
+
+    /**
+     * Adds an empty line to the bottom of the screen and removes extra lines if we are over the scrollback buffer
+     * Does not move the screen contents
+     */
+    private void addNewLine() {
         scrollback.add(new ArrayList<CharacterCell>(this.width));
-        if(scrollback.size() > scrollMaximum) {
+        if(scrollback.size() > scrollMaximum + this.height) { //The scrollback can only hold scrollMaximum number of extra lines past the lines in the screen
             scrollback.remove(0);
             bottomIndex = Math.max(0, bottomIndex - 1);
             cursorY = Math.max(0, cursorY - 1);
         }
         cursorY++;
-        bottomIndex = Math.min(scrollback.size() - 1, bottomIndex + 1);
-        rebuildScreen();
+        cursorX = 0;
+        if (cursorY > bottomIndex) {
+            bottomIndex = cursorY;
+        }
     }
 
     /**
@@ -198,8 +236,11 @@ public class TerminalBuffer {
      * @param text the new character to add
      */
     public void insertText(Character text) {
+        int oldLines = logicalToTerminal(cursorY);
         scrollback.get(cursorY).add(cursorX, new CharacterCell(text));
-        moveCursorX(1);
+        cursorX++;
+
+        if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
     }
 
     /**
@@ -207,18 +248,27 @@ public class TerminalBuffer {
      */
     public void clearScreen() {
         screen.clear();
+        addNewLine();
+        screen.addToFront(new TerminalLine(width));
     }
 
     /**
-     * Clears all data in screen and scrollback buffers
+     * Clears all data in screen and scrollback buffers and resets the cursor position
      */
     public void clearEntireBuffer() {
+        //Clearing buffers and setting them to only have one blank element
         screen.clear();
         scrollback.clear();
+        screen.addToFront(new TerminalLine(this.width));
+        scrollback.add(new ArrayList<CharacterCell>(this.width));
+
+        //Resetting cursor position
+        cursorX = 0;
+        cursorY = 0;
     }
 
     /**
-     * Returns entire screen content as a string. Does not handle characters or styles
+     * Returns entire screen content as a string. Does not handle colours or styles
      */
     public String getScreenContents() {
         StringBuilder buf = new StringBuilder();
@@ -227,9 +277,24 @@ public class TerminalBuffer {
             for(int j = 0; j < screen.get(i).size(); j++) {
                 buf.append(screen.get(i).get(j).getCharacter());
             }
-            if(i < screen.size() - 1 && !screen.get(i+1).getWrapped()) buf.append('\n');
+            buf.append("\n")    ;
         }
 
+        return buf.toString();
+    }
+
+    /**
+     * Returns the entire scrollback content as a string. Does not handle colours or styles
+     */
+    public String getScrollbackContents() {
+        StringBuilder buf = new StringBuilder();
+
+        for(int i = 0; i < scrollback.size(); i++) {
+            for(int j = 0; j < scrollback.get(i).size(); j++) {
+                buf.append(scrollback.get(i).get(j).getCharacter());
+            }
+            buf.append('\n');
+        }
         return buf.toString();
     }
 }
