@@ -1,6 +1,8 @@
 package org.BufferTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.Buffer.TerminalBuffer;
 import org.Buffer.Colour;
@@ -139,6 +141,24 @@ public class TerminalBufferTest {
         assertEquals("aa\na\n", testBuffer.getScreenContents());
     }
 
+    @Test
+    void testGetScreenLineWrapBehaviour() {
+        testBuffer.insertText('a');
+        testBuffer.insertText('b');
+        testBuffer.insertText('c');
+
+        assertEquals("c\n", testBuffer.getScreenLine());
+    }
+
+    @Test
+    void testScreenCursorCalculationAfterWrap() {
+        for(int i = 0; i < 5; i++) {
+            testBuffer.insertText('x');
+        }
+
+        assertTrue(testBuffer.getScreenCursorY() >= 0);
+    }
+
     /**
      * Test that setting the Y cursor position updates the screen contents
      */
@@ -171,6 +191,27 @@ public class TerminalBufferTest {
         assertEquals("1\n2\n", testBuffer.getScreenContents());
     }
 
+    @Test
+    void testScrollClampUpper() {
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+        }
+
+        testBuffer.scroll(100);
+
+        assertTrue(testBuffer.getCursorY() <= 4);
+    }
+
+    @Test
+    void testScrollClampLower() {
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+        }
+
+        testBuffer.scroll(-100);
+
+        assertEquals(0, testBuffer.getScreenCursorY());
+    }
 
     /**
      * Testing that setting y position of the cursor is clamped
@@ -217,6 +258,22 @@ public class TerminalBufferTest {
         testBuffer.setCursorY(0);
 
         assertEquals(false, testBuffer.createNewLine());
+    }
+
+    @Test
+    void testCreateNewLineFailsWhenScrolledUp() {
+        //Create several lines so we have scrollback
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+        }
+
+        //Scroll up so bottomIndex is no longer at the bottom
+        testBuffer.scroll(-1);
+
+        //Cursor should still be on the last logical line
+        boolean result = testBuffer.createNewLine();
+
+        assertFalse(result);
     }
 
     @Test
@@ -344,6 +401,22 @@ public class TerminalBufferTest {
     }
 
     @Test
+    void testFillLineWithCharFromMiddle() {
+        testBuffer.insertText('a');
+        testBuffer.fillLineWithChar('b');
+
+        assertEquals("ab\n", testBuffer.getScreenLine());
+    }
+
+    @Test
+    void testFillLineWithCharacterCellFromMiddle() {
+        testBuffer.insertText('a');
+        testBuffer.fillLineWithChar(new CharacterCell('c'));
+
+        assertEquals("ac\n", testBuffer.getScreenLine());
+    }
+
+    @Test
     void testFillLineNotOnBottom() {
         testBuffer.createNewLine();
         testBuffer.moveCursorY(-1);
@@ -399,6 +472,15 @@ public class TerminalBufferTest {
         testBuffer.insertText('a');
 
         assertEquals(Colour.DEFAULT, testBuffer.getForegroundColourAtCursorPos());
+    }
+
+    @Test
+    void testDefaultColourFallback() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+
+        assertEquals(Colour.BLACK, testBuffer.getBackgroundColourAtCursorPos());
+        assertEquals(Colour.WHITE, testBuffer.getForegroundColourAtCursorPos());
     }
 
     @Test
@@ -471,5 +553,41 @@ public class TerminalBufferTest {
         assertEquals("\n", testBuffer.getScreenContents());
         assertEquals(0, testBuffer.getScreenCursorX());
         assertEquals(0, testBuffer.getScreenCursorY());
+    }
+
+    @Test
+    void testGetScrollLineMultipleChars() {
+        testBuffer.insertText('a');
+        testBuffer.insertText('b');
+
+        assertEquals("ab\n", testBuffer.getScrollLine());
+    }
+
+    /**
+     * Testing Resizing
+     */
+
+    @Test
+    void testSetHeightRebuildScreen() {
+        testBuffer.insertText('a');
+        testBuffer.createNewLine();
+        testBuffer.insertText('b');
+
+        testBuffer.setHeight(1);
+
+        assertEquals(1, testBuffer.getHeight());
+        assertTrue(testBuffer.getScreenContents().contains("b"));
+    }
+
+    @Test
+    void testSetWidthRewrapLines() {
+        testBuffer.insertText('a');
+        testBuffer.insertText('b');
+        testBuffer.insertText('c');
+
+        testBuffer.setWidth(1);
+
+        assertEquals(1, testBuffer.getWidth());
+        assertTrue(testBuffer.getScreenContents().contains("c"));
     }
 }

@@ -76,12 +76,13 @@ public class TerminalBuffer {
         int logicalY = bottomIndex;
 
         //See how far up in the screen the cursor's logical line is
-        while(logicalY != cursorY) {
+        while(logicalY >= 0 && logicalY != cursorY) {
             screenY -= logicalToTerminal(logicalY);
             logicalY--;
         }
         //See how many extra lines the characters after the logical x-position of the cursor are
-        return screenY - ((scrollback.get(cursorY).size() - cursorX - 1 + this.width-1)/this.width);
+        screenY -= ((scrollback.get(cursorY).size() - cursorX - 1 + this.width-1)/this.width);
+        return Math.max(0, Math.min(screenY, height - 1)); //Clamp the value
     }
 
     public Integer getScrollMaximum() {
