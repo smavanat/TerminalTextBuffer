@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.Buffer.TerminalBuffer;
 import org.Buffer.Colour;
+import org.Buffer.Style;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +13,7 @@ public class TerminalBufferTest {
 
     @BeforeEach
     void initialise() {
-        testBuffer = new TerminalBuffer(5, 3, 10);
+        testBuffer = new TerminalBuffer(2, 2, 2);
     }
 
     /**
@@ -24,9 +25,9 @@ public class TerminalBufferTest {
      */
     @Test
     void testConstructorDefaults() {
-        assertEquals(5, testBuffer.getWidth());
-        assertEquals(3, testBuffer.getHeight());
-        assertEquals(10, testBuffer.getScrollMaximum());
+        assertEquals(2, testBuffer.getWidth());
+        assertEquals(2, testBuffer.getHeight());
+        assertEquals(2, testBuffer.getScrollMaximum());
         assertEquals(Colour.BLACK, testBuffer.getScreenBackgroundColour());
         assertEquals(Colour.WHITE, testBuffer.getScreenForegroundColour());
         assertEquals(0, testBuffer.getCursorX());
@@ -56,6 +57,37 @@ public class TerminalBufferTest {
     }
 
     /**
+     * Getter and setter tests:
+     */
+    @Test
+    void testColourSetters() {
+        testBuffer.setScreenBackgroundColour(Colour.GREEN);
+        testBuffer.setScreenForegroundColour(Colour.CYAN);
+
+        assertEquals(Colour.GREEN, testBuffer.getScreenBackgroundColour());
+        assertEquals(Colour.CYAN, testBuffer.getScreenForegroundColour());
+
+        testBuffer.setScreenBackgroundColour(Colour.DEFAULT);
+        testBuffer.setScreenForegroundColour(Colour.DEFAULT);
+
+        assertEquals(Colour.GREEN, testBuffer.getScreenBackgroundColour());
+        assertEquals(Colour.CYAN, testBuffer.getScreenForegroundColour());
+    }
+
+    void testDimensionSetters() {
+        testBuffer.setHeight(1);
+        testBuffer.setWidth(1);
+
+        assertEquals(1, testBuffer.getHeight());
+        assertEquals(1, testBuffer.getHeight());
+
+    }
+
+    /**
+     * Cursor Tests
+     */
+
+    /**
      * Testing that setting x position of the cursor is clamped
      */
     @Test
@@ -65,41 +97,6 @@ public class TerminalBufferTest {
 
         testBuffer.setCursorX(-1);
         assertEquals(0, testBuffer.getCursorX());
-    }
-
-    /**
-     * Testing that setting y position of the cursor is clamped
-     */
-    @Test
-    void testSetCursorYClamped() {
-        testBuffer.setCursorY(1);
-        assertEquals(0, testBuffer.getCursorY());
-
-        testBuffer.setCursorY(-1);
-        assertEquals(0, testBuffer.getCursorY());
-    }
-
-    /**
-     * Test that the cursor moves down when a new line is added
-     */
-    @Test
-    void testCreateNewLine() {
-        testBuffer.createNewLine();
-        assertEquals(1, testBuffer.getCursorY());
-        assertEquals(0, testBuffer.getCursorX());
-    }
-
-    /**
-     * Test that lines beyond the scrollMaximum are removed
-     */
-    @Test
-    void testCreateNewLinePastScrollMax() {
-        for(int i = 0; i < 5; i++) {
-            testBuffer.createNewLine();
-            testBuffer.insertText((char)('0' + i));
-        }
-
-        assertEquals("1\n2\n3\n4\n", testBuffer.getScrollbackContents());
     }
 
     /**
@@ -119,16 +116,6 @@ public class TerminalBufferTest {
         testBuffer.moveCursorX(-1);
         assertEquals(0, testBuffer.getCursorX());
         assertEquals(0, testBuffer.getScreenCursorX());
-    }
-
-    /**
-     * Test to make sure that text is inserted correctly
-     */
-    @Test
-    void testInsertText() {
-        testBuffer.insertText('a');
-
-        assertEquals("a\n", testBuffer.getScreenContents());
     }
 
     /**
@@ -181,6 +168,166 @@ public class TerminalBufferTest {
 
         testBuffer.scroll(1);
         assertEquals("1\n2\n", testBuffer.getScreenContents());
+    }
+
+
+    /**
+     * Testing that setting y position of the cursor is clamped
+     */
+    @Test
+    void testSetCursorYClamped() {
+        testBuffer.setCursorY(1);
+        assertEquals(0, testBuffer.getCursorY());
+
+        testBuffer.setCursorY(-1);
+        assertEquals(0, testBuffer.getCursorY());
+    }
+
+    /**
+     * Buffer manipulation tests
+     */
+
+    /**
+     * Test that the cursor moves down when a new line is added
+     */
+    @Test
+    void testCreateNewLine() {
+        testBuffer.createNewLine();
+        assertEquals(1, testBuffer.getCursorY());
+        assertEquals(0, testBuffer.getCursorX());
+    }
+
+    /**
+     * Test that lines beyond the scrollMaximum are removed
+     */
+    @Test
+    void testCreateNewLinePastScrollMax() {
+        for(int i = 0; i < 5; i++) {
+            testBuffer.createNewLine();
+            testBuffer.insertText((char)('0' + i));
+        }
+
+        assertEquals("1\n2\n3\n4\n", testBuffer.getScrollbackContents());
+    }
+
+    @Test
+    void testCreateNewLineNotOnBottom() {
+        testBuffer.createNewLine();
+        testBuffer.setCursorY(0);
+
+        assertEquals(false, testBuffer.createNewLine());
+    }
+
+    @Test
+    void testInsertText() {
+        testBuffer.insertText('a');
+
+        assertEquals("a\n", testBuffer.getScreenContents());
+    }
+
+    @Test
+    void testInsertTextNotOnBottom() {
+        testBuffer.createNewLine();
+        testBuffer.setCursorY(0);
+
+        assertEquals(false, testBuffer.insertText('a'));
+    }
+
+    @Test
+    void testOverwriteText() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        testBuffer.overwriteText('b');
+
+        assertEquals("b\n", testBuffer.getScreenContents());
+    }
+
+    @Test
+    void testOverwriteTextNotOnBottom() {
+        testBuffer.createNewLine();
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        testBuffer.setCursorY(0);
+
+        assertEquals(false, testBuffer.overwriteText('b'));
+    }
+
+    @Test
+    void testSetBackgroundColour() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        testBuffer.setBackgroundColourAtCursorPos(Colour.GREEN);
+
+        assertEquals(Colour.GREEN, testBuffer.getBackgroundColourAtCursorPos());
+    }
+
+    @Test
+    void testSetBackgroundColourNotOnBottom() {
+        testBuffer.createNewLine();
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        testBuffer.setCursorY(0);
+
+        assertEquals(false, testBuffer.setBackgroundColourAtCursorPos(Colour.GREEN));
+    }
+
+    @Test
+    void testSetBackgroundColourEndOfLine() {
+        testBuffer.insertText('a');
+
+        assertEquals(false, testBuffer.setBackgroundColourAtCursorPos(Colour.GREEN));
+    }
+
+    @Test
+    void testSetForegroundColour() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        testBuffer.setForegroundColourAtCursorPos(Colour.GREEN);
+
+        assertEquals(Colour.GREEN, testBuffer.getForegroundColourAtCursorPos());
+    }
+
+    @Test
+    void testSetForegroundColourNotOnBottom() {
+        testBuffer.createNewLine();
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        testBuffer.setCursorY(0);
+
+        assertEquals(false, testBuffer.setForegroundColourAtCursorPos(Colour.GREEN));
+    }
+
+    @Test
+    void testSetForegroundColourEndOfLine() {
+        testBuffer.insertText('a');
+
+        assertEquals(false, testBuffer.setForegroundColourAtCursorPos(Colour.GREEN));
+    }
+
+    @Test
+    void testSetStyle() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        testBuffer.setStyleAtCursorPos(Style.BOLD);
+
+        assertEquals(Style.BOLD, testBuffer.getStyleAtCursorPos());
+    }
+
+    @Test
+    void testSetStyleNotOnBottom() {
+        testBuffer.createNewLine();
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+        testBuffer.setCursorY(0);
+
+        assertEquals(false, testBuffer.setStyleAtCursorPos(Style.BOLD));
+    }
+
+    @Test
+    void testSetStyleEndOfLine() {
+        testBuffer.insertText('a');
+
+        assertEquals(false, testBuffer.setStyleAtCursorPos(Style.BOLD));
     }
 
     /**

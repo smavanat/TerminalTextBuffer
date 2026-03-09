@@ -106,10 +106,12 @@ public class TerminalBuffer {
     }
 
     public void setScreenBackgroundColour(Colour val) {
+        if(val == Colour.DEFAULT) return; //Avoid breaking the colour system
         this.screenBackgroundColour = val;
     }
 
     public void setScreenForegroundColour(Colour val) {
+        if(val == Colour.DEFAULT) return; //Avoid breaking the colour system
         this.screenForegroundColour = val;
     }
 
@@ -198,9 +200,12 @@ public class TerminalBuffer {
      * Adds an empty line to the bottom of the screen and removes extra lines if we are over the scrollback buffer.
      * Moves the cursor down one line, scrolling if necessary
      */
-    public void createNewLine() {
+    public boolean createNewLine() {
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+
         addNewLine();
         rebuildScreen();
+        return true;
     }
 
     /**
@@ -238,7 +243,7 @@ public class TerminalBuffer {
      * @return true if the text was inserted, false if the cursor is not at the bottom line
      */
     public boolean insertText(Character text) {
-        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
         int oldLines = logicalToTerminal(cursorY);
         scrollback.get(cursorY).add(cursorX, new CharacterCell(text));
@@ -256,7 +261,7 @@ public class TerminalBuffer {
      * @return true if the text was overwritten, false if the cursor is not at the bottom line
      */
     public boolean overwriteText(Character text) {
-        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
         scrollback.get(cursorY).get(cursorX).setCharacter(text); //Overwriting the character in this position
         moveCursorX(1);
@@ -271,7 +276,8 @@ public class TerminalBuffer {
      * @return true if the text was overwritten, false if the cursor is not at the bottom line
      */
     public boolean setBackgroundColourAtCursorPos(Colour colour) {
-        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1 || 
+            scrollback.get(cursorY).size() == cursorX) return false; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
         scrollback.get(cursorY).get(cursorX).setBackgroundColour(colour); //Overwriting the colour in this position
         return true;
@@ -284,7 +290,8 @@ public class TerminalBuffer {
      * @return true if the text was overwritten, false if the cursor is not at the bottom line
      */
     public boolean setForegroundColourAtCursorPos(Colour colour) {
-        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1 || 
+            scrollback.get(cursorY).size() == cursorX) return false; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
         scrollback.get(cursorY).get(cursorX).setForegroundColour(colour); //Overwriting the colour in this position
         return true;
@@ -297,9 +304,10 @@ public class TerminalBuffer {
      * @return true if the text was overwritten, false if the cursor is not at the bottom line
      */
     public boolean setStyleAtCursorPos(Style style) {
-        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1 || 
+            scrollback.get(cursorY).size() == cursorX) return false; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
-        scrollback.get(cursorY).get(cursorX).setStyleFlag(style); //Overwriting the style in this position
+        scrollback.get(cursorY).get(cursorX).setStyleFlag(style);//Overwriting the style in this position
         return true;
     }
 
@@ -308,7 +316,7 @@ public class TerminalBuffer {
      * @return true if the line was cleared, false if the cursor is not at the bottom line
      */
     public boolean emptyLine() {
-        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
         scrollback.get(cursorY).clear();
         rebuildScreen(); //Remake the layout
@@ -323,7 +331,7 @@ public class TerminalBuffer {
      * @return true if the line was cleared, false if the cursor is not at the bottom line
      */
     public boolean fillLineWithChar(CharacterCell fill) {
-        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
         for(int i = getScreenCursorX(); i < width; i++) {
             scrollback.get(cursorY).add(fill);
@@ -342,7 +350,7 @@ public class TerminalBuffer {
      * @return true if the line was cleared, false if the cursor is not at the bottom line
      */
     public boolean fillLineWithChar(Character fill) {
-        if(cursorY != scrollback.size()-1 && bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
         CharacterCell defaultFill = new CharacterCell(fill);
         for(int i = getScreenCursorX(); i < width; i++) {
@@ -359,30 +367,38 @@ public class TerminalBuffer {
      */
 
     /**
-     * @return the character stored in the cell at the current cursor's position
+     * @return the character stored in the cell at the current cursor's position if the cursor is not beyond the end of the line
      */
     public Character getCharAtCursorPos() {
+        if(scrollback.get(cursorY).size() == cursorX) return null; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
+
         return scrollback.get(cursorY).get(cursorX).getCharacter();
     }
 
     /**
-     * @return the background colour stored in the cell at the current cursor's position
+     * @return the background colour stored in the cell at the current cursor's position if the cursor is not beyond the end of the line
      */
     public Colour getBackgroundColourAtCursorPos() {
+        if(scrollback.get(cursorY).size() == cursorX) return null; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
+
         return scrollback.get(cursorY).get(cursorX).getBackgroundColour() == Colour.DEFAULT ? this.screenBackgroundColour : scrollback.get(cursorY).get(cursorX).getBackgroundColour();
     }
 
     /**
-     * @return the foreground colour stored in the cell at the current cursor's position
+     * @return the foreground colour stored in the cell at the current cursor's position if the cursor is not beyond the end of the line
      */
     public Colour getForegroundColourAtCursorPos() {
+        if(scrollback.get(cursorY).size() == cursorX) return null; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
+
         return scrollback.get(cursorY).get(cursorX).getForegroundColour() == Colour.DEFAULT ? this.screenForegroundColour : scrollback.get(cursorY).get(cursorX).getForegroundColour();
     }
 
     /**
-     * @return the style stored in the cell at the current cursor's position
+     * @return the style stored in the cell at the current cursor's position if the cursor is not beyond the end of the line
      */
     public Style getStyleAtCursorPos() {
+        if(scrollback.get(cursorY).size() == cursorX) return null; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
+
         return scrollback.get(cursorY).get(cursorX).getStyleFlag();
     }
 
