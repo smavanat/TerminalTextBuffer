@@ -113,6 +113,26 @@ public class TerminalBuffer {
         this.screenForegroundColour = val;
     }
 
+    public Integer getHeight() {
+        return this.height;
+    }
+
+    public Integer getWidth() {
+        return this.width;
+    }
+
+    public void setHeight(Integer val) {
+        this.height = val;
+        screen.clear();
+        rebuildScreen();
+    }
+
+    public void setWidth(Integer val) {
+        this.width = val;
+        screen.clear();
+        rebuildScreen();
+    }
+
     /**
      * CURSOR OPERATIONS
      */
