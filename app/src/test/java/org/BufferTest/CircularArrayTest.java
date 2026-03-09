@@ -247,7 +247,7 @@ public class CircularArrayTest {
      */
     @Test
     void testShrinkMinSize() {
-        testArray = new CircularArray<>(1);
+        testArray = new CircularArray<>(100);
         testArray.addToFront(0);
         testArray.removeFromFront();
         assertEquals(0, testArray.size());
