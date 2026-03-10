@@ -446,6 +446,7 @@ public class TerminalBuffer {
             scrollback.get(cursorY).size() == cursorX) return false; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
         scrollback.get(cursorY).get(cursorX).setBackgroundColour(colour); //Overwriting the colour in this position
+        screen.get(getScreenCursorY()).get(getScreenCursorX()).setBackgroundColour(colour); //Overwriting the screen colour in this position
         return true;
     }
 
@@ -459,7 +460,8 @@ public class TerminalBuffer {
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1 || 
             scrollback.get(cursorY).size() == cursorX) return false; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
-        scrollback.get(cursorY).get(cursorX).setForegroundColour(colour); //Overwriting the colour in this position
+        scrollback.get(cursorY).get(cursorX).setForegroundColour(colour); //Overwriting the scrollback colour in this position
+        screen.get(getScreenCursorY()).get(getScreenCursorX()).setForegroundColour(colour); //Overwriting the screen colour in this position
         return true;
     }
 
@@ -473,7 +475,8 @@ public class TerminalBuffer {
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1 || 
             scrollback.get(cursorY).size() == cursorX) return false; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
-        scrollback.get(cursorY).get(cursorX).setStyleFlag(style);//Overwriting the style in this position
+        scrollback.get(cursorY).get(cursorX).setStyleFlag(style);//Overwriting the scrollback style in this position
+        screen.get(getScreenCursorY()).get(getScreenCursorX()).setStyleFlag(style);//Overwriting the screen style in this position
         return true;
     }
 
