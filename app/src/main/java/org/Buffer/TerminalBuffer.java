@@ -208,13 +208,16 @@ public class TerminalBuffer {
      * @param val the number of steps to move */
     public void moveCursorX(Integer val) {
         int pos = cursorX + val;
+        System.out.println("Moving to initial: "+ pos);
 
         ArrayList<CharacterCell> line = scrollback.get(cursorY);
         //If we are moving to an empty flag, skip it
         if(pos > 0 && pos < line.size() && line.get(pos).getTrailFlag() == TrailFlag.WIDE_END) {
-            if (pos < line.size() - 1 && val > 0) pos += 1; //If moving right
+            System.out.println("Moving to an empty flag");
+            if (pos < line.size() && val > 0) pos += 1; //If moving right
             else if (pos > 0 && val < 0) pos -= 1; //If moving left
         }
+        System.out.println("Moving to final: "+ pos);
         setCursorX(pos);
     }
     /**
@@ -223,7 +226,6 @@ public class TerminalBuffer {
      * @param val the number of steps to move
      */
     public void moveCursorY(Integer val) {
-        System.out.println("Moving to: " + (cursorY + val));
         setCursorY(cursorY + val);
     }
 
@@ -292,6 +294,7 @@ public class TerminalBuffer {
      * @return true if the text was inserted, false if the cursor is not at the bottom line
      */
     public boolean insertText(Character text) {
+        System.out.printf("Received char: %c (U+%04X)\n", text, (int) text);
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false;
 
         int oldLines = logicalToTerminal(cursorY);

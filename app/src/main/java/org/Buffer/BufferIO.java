@@ -1,6 +1,8 @@
 package org.Buffer;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -10,11 +12,13 @@ public class BufferIO {
     private ArrayList<CharacterCell> screenBuf;
     private Mode currentMode = Mode.COMMAND;
     private String message;
+    private InputStreamReader reader;
 
     public BufferIO() {
         buffer = new TerminalBuffer(10, 10, -1, Colour.WHITE, Colour.BLACK);
         inputScanner = new Scanner(System.in);
         message = "";
+        reader = new InputStreamReader(System.in, StandardCharsets.UTF_8);
     }
 
     public void getInputFromUser() {
@@ -193,12 +197,26 @@ public class BufferIO {
         System.out.flush();
 
         int ch;
-        while((ch = System.in.read()) != -1) {
-            if(ch == '\n') break;
+        // while((ch = System.in.read()) != -1) {
+        //     if(ch == '\n') break;
+        //     else if (ch == '\r') continue;
+        //     else if (ch == 127 || ch == 8) {
+        //         if(inputBuffer.length() > 0) {
+        //             inputBuffer.deleteCharAt(inputBuffer.length()-1);
+        //             System.out.print("\b \b");
+        //         }
+        //     }
+        //     else {
+        //         inputBuffer.append((char) ch);
+        //     }
+        //     System.out.flush();
+        // }
+        while ((ch = reader.read()) != -1) {
+            if (ch == '\n') break;
             else if (ch == '\r') continue;
-            else if (ch == 127 || ch == 8) {
-                if(inputBuffer.length() > 0) {
-                    inputBuffer.deleteCharAt(inputBuffer.length()-1);
+            else if (ch == 127 || ch == 8) { // backspace
+                if (inputBuffer.length() > 0) {
+                    inputBuffer.deleteCharAt(inputBuffer.length() - 1);
                     System.out.print("\b \b");
                 }
             }
@@ -344,13 +362,14 @@ public class BufferIO {
                 }
                 break;
             case INSERT:
-                for(int i = 0; i < command.length(); i++) {
-                    if(command.charAt(0)== 27) {
-                        currentMode = Mode.COMMAND;
-                        break;
-                    }
-                    buffer.insertText(command.charAt(i));
+                if(command.charAt(0)== 27) {
+                    currentMode = Mode.COMMAND;
+                    break;
                 }
+                // for(int i = 0; i < command.length(); i++) {
+                //     buffer.insertText(command.charAt(i));
+                // }
+                command.codePoints().forEach(cp -> buffer.insertText((char) cp));
                 break;
             case REPLACE:
                 if(command.charAt(0) == 27) currentMode = Mode.COMMAND;
