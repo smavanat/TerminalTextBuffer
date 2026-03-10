@@ -138,7 +138,7 @@ public class TerminalBufferTest {
             testBuffer.insertText('a');
         }
 
-        assertEquals("aa\na\n", testBuffer.getScreenContents());
+        assertEquals("aa\na\n", testBuffer.printScreenContents());
     }
 
     @Test
@@ -147,7 +147,7 @@ public class TerminalBufferTest {
         testBuffer.insertText('b');
         testBuffer.insertText('c');
 
-        assertEquals("c\n", testBuffer.getScreenLine());
+        assertEquals("c\n", testBuffer.printScreenLine());
     }
 
     @Test
@@ -168,10 +168,10 @@ public class TerminalBufferTest {
         }
 
         testBuffer.setCursorY(0);
-        assertEquals("0\n1\n", testBuffer.getScreenContents());
+        assertEquals("0\n1\n", testBuffer.printScreenContents());
 
         testBuffer.setCursorY(2);
-        assertEquals("1\n2\n", testBuffer.getScreenContents());
+        assertEquals("1\n2\n", testBuffer.printScreenContents());
     }
 
     /**
@@ -185,10 +185,10 @@ public class TerminalBufferTest {
         }
 
         testBuffer.scroll(-1);
-        assertEquals("0\n1\n", testBuffer.getScreenContents());
+        assertEquals("0\n1\n", testBuffer.printScreenContents());
 
         testBuffer.scroll(1);
-        assertEquals("1\n2\n", testBuffer.getScreenContents());
+        assertEquals("1\n2\n", testBuffer.printScreenContents());
     }
 
     @Test
@@ -249,7 +249,7 @@ public class TerminalBufferTest {
             testBuffer.insertText((char)('0' + i));
         }
 
-        assertEquals("1\n2\n3\n4\n", testBuffer.getScrollbackContents());
+        assertEquals("1\n2\n3\n4\n", testBuffer.printScrollbackContents());
     }
 
     @Test
@@ -280,7 +280,7 @@ public class TerminalBufferTest {
     void testInsertText() {
         testBuffer.insertText('a');
 
-        assertEquals("a\n", testBuffer.getScreenContents());
+        assertEquals("a\n", testBuffer.printScreenContents());
     }
 
     @Test
@@ -310,7 +310,7 @@ public class TerminalBufferTest {
         testBuffer.moveCursorX(-1);
         testBuffer.overwriteText('b');
 
-        assertEquals("b\n", testBuffer.getScreenContents());
+        assertEquals("b\n", testBuffer.printScreenContents());
     }
 
     @Test
@@ -463,12 +463,12 @@ public class TerminalBufferTest {
     void testFillLine() {
         testBuffer.fillLineWithChar('a');
 
-        assertEquals("aa\n", testBuffer.getScreenLine());
+        assertEquals("aa\n", testBuffer.printScreenLine());
 
         testBuffer.createNewLine();
         testBuffer.fillLineWithChar(new CharacterCell('a'));
 
-        assertEquals("aa\n", testBuffer.getScreenLine());
+        assertEquals("aa\n", testBuffer.printScreenLine());
     }
 
     @Test
@@ -476,7 +476,7 @@ public class TerminalBufferTest {
         testBuffer.insertText('a');
         testBuffer.fillLineWithChar('b');
 
-        assertEquals("ab\n", testBuffer.getScreenLine());
+        assertEquals("ab\n", testBuffer.printScreenLine());
     }
 
     @Test
@@ -484,7 +484,7 @@ public class TerminalBufferTest {
         testBuffer.insertText('a');
         testBuffer.fillLineWithChar(new CharacterCell('c'));
 
-        assertEquals("ac\n", testBuffer.getScreenLine());
+        assertEquals("ac\n", testBuffer.printScreenLine());
     }
 
     @Test
@@ -597,7 +597,7 @@ public class TerminalBufferTest {
         testBuffer.insertText('a');
         testBuffer.clearLine();
 
-        assertEquals("\n", testBuffer.getScrollLine());
+        assertEquals("\n", testBuffer.printScrollLine());
     }
 
     @Test
@@ -607,7 +607,7 @@ public class TerminalBufferTest {
         testBuffer.moveCursorY(-1);
         testBuffer.clearLine();
 
-        assertEquals("a\n", testBuffer.getScrollLine());
+        assertEquals("a\n", testBuffer.printScrollLine());
     }
 
     @Test
@@ -635,8 +635,8 @@ public class TerminalBufferTest {
 
         testBuffer.clearEntireBuffer();
 
-        assertEquals("\n", testBuffer.getScrollbackContents());
-        assertEquals("\n", testBuffer.getScreenContents());
+        assertEquals("\n", testBuffer.printScrollbackContents());
+        assertEquals("\n", testBuffer.printScreenContents());
         assertEquals(0, testBuffer.getCursorX());
         assertEquals(0, testBuffer.getCursorY());
     }
@@ -649,8 +649,8 @@ public class TerminalBufferTest {
 
         testBuffer.clearScreen();
 
-        assertEquals("012\n\n", testBuffer.getScrollbackContents());
-        assertEquals("\n", testBuffer.getScreenContents());
+        assertEquals("012\n\n", testBuffer.printScrollbackContents());
+        assertEquals("\n", testBuffer.printScreenContents());
         assertEquals(0, testBuffer.getScreenCursorX());
         assertEquals(0, testBuffer.getScreenCursorY());
     }
@@ -660,7 +660,7 @@ public class TerminalBufferTest {
         testBuffer.insertText('a');
         testBuffer.insertText('b');
 
-        assertEquals("ab\n", testBuffer.getScrollLine());
+        assertEquals("ab\n", testBuffer.printScrollLine());
     }
 
     /**
@@ -676,7 +676,7 @@ public class TerminalBufferTest {
         testBuffer.setHeight(1);
 
         assertEquals(1, testBuffer.getHeight());
-        assertTrue(testBuffer.getScreenContents().contains("b"));
+        assertTrue(testBuffer.printScreenContents().contains("b"));
     }
 
     @Test
@@ -688,6 +688,6 @@ public class TerminalBufferTest {
         testBuffer.setWidth(1);
 
         assertEquals(1, testBuffer.getWidth());
-        assertTrue(testBuffer.getScreenContents().contains("c"));
+        assertTrue(testBuffer.printScreenContents().contains("c"));
     }
 }

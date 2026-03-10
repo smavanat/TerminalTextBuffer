@@ -110,4 +110,12 @@ public class CharacterCell {
 
         return false;
     }
+
+    public void copy(CharacterCell c) {
+        this.character = c.getCharacter();
+        this.backgroundColour = c.getBackgroundColour();
+        this.foregroundColour = c.getForegroundColour();
+        this.styleFlag = c.getStyleFlag();
+        this.trailFlag = c.getTrailFlag();
+    }
 }

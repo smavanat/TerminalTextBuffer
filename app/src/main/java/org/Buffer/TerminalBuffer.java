@@ -2,8 +2,6 @@ package org.Buffer;
 
 import java.util.ArrayList;
 
-import com.google.common.util.concurrent.CycleDetectingLockFactory.WithExplicitOrdering;
-
 /**
  * NOTE: Lines in the screen are set to have their wrapped attribute set to true if they wrap from the previous line,
  *       not if they wrap onto the next one
@@ -142,6 +140,14 @@ public class TerminalBuffer {
         rebuildScreen();
     }
 
+    public TerminalLine getScreenLine(int index) {
+        return screen.get(index);
+    }
+
+    public int getScreenSize() {
+        return screen.size();
+    }
+
     /**
      * CURSOR OPERATIONS
      */
@@ -174,6 +180,7 @@ public class TerminalBuffer {
         }
 
         cursorY = clampedVal;
+        setCursorX(Math.min(cursorX, scrollback.get(cursorY).size()));
     }
 
     /**
@@ -282,14 +289,23 @@ public class TerminalBuffer {
 
         if(charWidth == 1) {
             line.add(cursorX, new CharacterCell(text));
-            cursorX += 1;
         } else { // width == 2
             line.add(cursorX, new CharacterCell(text, TrailFlag.WIDE_START));
             line.add(cursorX + 1, new CharacterCell(text, TrailFlag.WIDE_END));
-            cursorX += 2;
         }
 
         if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
+        else {
+            System.out.println("Screen Cursor X: " + getScreenCursorX());
+            if(charWidth == 1) {
+                screen.get(getScreenCursorY()).add(getScreenCursorX(), new CharacterCell(text));
+            } else { // width == 2
+                screen.get(getScreenCursorY()).add(getScreenCursorX(), new CharacterCell(text, TrailFlag.WIDE_START));
+                screen.get(getScreenCursorY()).add(getScreenCursorX() + 1, new CharacterCell(text, TrailFlag.WIDE_END));
+            }
+        }
+
+        cursorX += charWidth;
 
         return true;
     }
@@ -304,7 +320,7 @@ public class TerminalBuffer {
      * @return true if the text was overwritten, false if the cursor is not at the bottom line
      */
     public boolean overwriteText(Character text) {
-        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1 || cursorX >= scrollback.get(cursorY).size()) return false; //Early exit when not at the bottom of the screen
 
         ArrayList<CharacterCell> line = scrollback.get(cursorY);
         int oldLines = logicalToTerminal(cursorY);
@@ -317,15 +333,22 @@ public class TerminalBuffer {
         }
 
         line.get(cursorX).setCharacter(text);
+        screen.get(getScreenCursorY()).get(getScreenCursorX()).setCharacter(text);
 
         if(oldCharWidth == 1 && newCharWidth == 2)
             line.add(cursorX+1, new CharacterCell(null, TrailFlag.WIDE_END));
         if(oldCharWidth == 2 && newCharWidth == 1)
             line.remove(cursorX+1);
 
-        moveCursorX(newCharWidth == 2 ? 2 : 1);
-
         if(oldLines != logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen if adding different sized character changes number of terminal lines
+        else {
+            if(oldCharWidth == 1 && newCharWidth == 2)
+                screen.get(getScreenCursorY()).add(getScreenCursorX()+1, new CharacterCell(null, TrailFlag.WIDE_END));
+            if(oldCharWidth == 2 && newCharWidth == 1)
+                screen.get(getScreenCursorY()).remove(getScreenCursorX()+1);
+        }
+
+        moveCursorX(newCharWidth == 2 ? 2 : 1);
 
         return true;
     }
@@ -468,7 +491,7 @@ public class TerminalBuffer {
     /**
      * @return the entire terminal line the cursor is currently on as a {@link String}
      */
-    public String getScreenLine() {
+    public String printScreenLine() {
         StringBuilder buf = new StringBuilder();
         TerminalLine line = screen.get(getScreenCursorY());
 
@@ -484,7 +507,7 @@ public class TerminalBuffer {
     /**
      * @return the entire logical line the cursor is currently on as a {@link String}
      */
-    public String getScrollLine() {
+    public String printScrollLine() {
         StringBuilder buf = new StringBuilder();
         ArrayList<CharacterCell> line = scrollback.get(cursorY);
 
@@ -499,7 +522,7 @@ public class TerminalBuffer {
     /**
      * @return entire screen content as a string. Does not handle colours or styles
      */
-    public String getScreenContents() {
+    public String printScreenContents() {
         StringBuilder buf = new StringBuilder();
 
         for(int i = 0; i < screen.size(); i++) {
@@ -515,7 +538,7 @@ public class TerminalBuffer {
     /**
      * @return the entire scrollback content as a string. Does not handle colours or styles
      */
-    public String getScrollbackContents() {
+    public String printScrollbackContents() {
         StringBuilder buf = new StringBuilder();
 
         for(int i = 0; i < scrollback.size(); i++) {
@@ -583,7 +606,7 @@ public class TerminalBuffer {
      */
     private void addNewLine() {
         scrollback.add(new ArrayList<CharacterCell>(this.width));
-        if(scrollback.size() > scrollMaximum + this.height) { //The scrollback can only hold scrollMaximum number of extra lines past the lines in the screen
+        if(scrollback.size() > Math.max(scrollMaximum + this.height, scrollMaximum)) { //The scrollback can only hold scrollMaximum number of extra lines past the lines in the screen
             scrollback.remove(0);
             bottomIndex = Math.max(0, bottomIndex - 1);
             cursorY = Math.max(0, cursorY - 1);

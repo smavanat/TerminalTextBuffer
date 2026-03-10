@@ -90,4 +90,8 @@ public class TerminalLine {
     public void addAll(Collection<? extends CharacterCell> c) {
         characters.addAll(c);
     }
+
+    public void remove(int index) {
+        characters.remove(index);
+    }
 }
