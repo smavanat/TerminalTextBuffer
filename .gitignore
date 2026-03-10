@@ -10,3 +10,9 @@ build
 .classpath
 app/bin/
 .idea
+# Ignore everything in app/build
+app/build/*
+
+# Allow docs folder
+!app/build/docs/
+!app/build/docs/**
