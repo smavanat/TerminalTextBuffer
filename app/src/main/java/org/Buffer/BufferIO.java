@@ -9,10 +9,12 @@ public class BufferIO {
     private Scanner inputScanner;
     private ArrayList<CharacterCell> screenBuf;
     private Mode currentMode = Mode.COMMAND;
+    private String message;
 
     public BufferIO() {
         buffer = new TerminalBuffer(10, 10, -1, Colour.WHITE, Colour.BLACK);
         inputScanner = new Scanner(System.in);
+        message = "";
     }
 
     public void getInputFromUser() {
@@ -42,12 +44,15 @@ public class BufferIO {
     }
 
     private void printScreen() {
+        System.out.println("MODE: " + currentMode.toString() + "                 Position: (" + buffer.getCursorX() + ", " + buffer.getCursorY() + ")");
         for(int i = 0; i < screenBuf.size(); i++) {
             if(screenBuf.get(i).getTrailFlag() == TrailFlag.WIDE_END) continue;
             if(buffer.getScreenCursorY() * buffer.getWidth() + buffer.getScreenCursorX() == i) printCursor();
             else printCell(screenBuf.get(i));
             if((i + 1) % buffer.getWidth() == 0) System.out.print('\n');
         }
+        if(message != "") System.out.print(message);
+        message ="";
     }
 
     private void initialiseScreen() {
@@ -58,8 +63,8 @@ public class BufferIO {
     }
 
     private void clearScreen() {
-        // System.out.print("\u001B[2J");   //clear the screen
-        // System.out.print("\u001B[H");    //move cursor to top-left corner
+        System.out.print("\u001B[2J");   //clear the screen
+        System.out.print("\u001B[H");    //move cursor to top-left corner
         System.out.flush();
 
         for(int i = 0; i < screenBuf.size(); i++) {
@@ -314,13 +319,13 @@ public class BufferIO {
                         buffer.clearEntireBuffer();
                         break;
                     case PRINT_LINE:
-                        System.out.println(buffer.printScrollLine());
+                        message = buffer.printScrollLine();
                         break;
                     case PRINT_SCREEN:
-                        System.out.println(buffer.printScreenContents());
+                        message = buffer.printScreenContents();
                         break;
                     case PRINT_BUFFER:
-                        System.out.println(buffer.printScrollbackContents());
+                        message = buffer.printScrollbackContents();
                         break;
                     default:
                         break;
