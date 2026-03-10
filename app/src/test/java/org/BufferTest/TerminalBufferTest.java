@@ -690,4 +690,218 @@ public class TerminalBufferTest {
         assertEquals(1, testBuffer.getWidth());
         assertTrue(testBuffer.printScreenContents().contains("c"));
     }
+
+    /**
+     * Wide Character Handling
+     */
+
+    @Test
+    void testInsertWideCharacter() {
+        testBuffer.insertText('界'); // CJK wide char
+
+        assertEquals(2, testBuffer.getCursorX());
+        assertTrue(testBuffer.printScrollLine().contains("界"));
+    }
+
+    @Test
+    void testInsertWideCharacterWrap() {
+        testBuffer.insertText('界');
+        testBuffer.insertText('界');
+
+        assertTrue(testBuffer.printScreenContents().contains("界"));
+    }
+
+    @Test
+    void testCursorCannotLandOnWideEnd() {
+        testBuffer.insertText('界');
+
+        testBuffer.setCursorX(1);
+
+        assertEquals(0, testBuffer.getCursorX());
+    }
+
+    @Test
+    void testMoveCursorAcrossWideChar() {
+        testBuffer.insertText('界');
+
+        testBuffer.moveCursorX(-1);
+
+        assertEquals(0, testBuffer.getCursorX());
+    }
+
+
+    /**
+     * Backspace Behaviour
+     */
+
+    @Test
+    void testBackspaceDeletesCharacter() {
+        testBuffer.insertText('a');
+        testBuffer.insertText('\b');
+
+        assertEquals("\n", testBuffer.printScrollLine());
+    }
+
+    @Test
+    void testBackspaceAtStartOfLine() {
+        boolean result = testBuffer.insertText('\b');
+
+        assertFalse(result);
+    }
+
+    @Test
+    void testBackspaceDeletesWideCharacter() {
+        testBuffer.insertText('界');
+        testBuffer.insertText('\b');
+
+        assertEquals("\n", testBuffer.printScrollLine());
+    }
+
+
+    /**
+     * deleteText()
+     */
+
+    @Test
+    void testDeleteTextSingleCharacter() {
+        testBuffer.insertText('a');
+        testBuffer.moveCursorX(-1);
+
+        testBuffer.deleteText();
+
+        assertEquals("\n", testBuffer.printScrollLine());
+    }
+
+    @Test
+    void testDeleteTextWideCharacter() {
+        testBuffer.insertText('界');
+        testBuffer.moveCursorX(-2);
+
+        testBuffer.deleteText();
+
+        assertEquals("\n", testBuffer.printScrollLine());
+    }
+
+    @Test
+    void testDeleteTextAtEndOfLineFails() {
+        testBuffer.insertText('a');
+
+        assertFalse(testBuffer.deleteText());
+    }
+
+
+    /**
+     * Cursor Clamp Behaviour
+     */
+
+    @Test
+    void testCursorXClampedToLineLength() {
+        testBuffer.insertText('a');
+
+        testBuffer.setCursorX(100);
+
+        assertEquals(1, testBuffer.getCursorX());
+    }
+
+    @Test
+    void testCursorXNegativeClamp() {
+        testBuffer.insertText('a');
+
+        testBuffer.setCursorX(-10);
+
+        assertEquals(0, testBuffer.getCursorX());
+    }
+
+
+    /**
+     * Screen vs Scrollback
+     */
+
+    @Test
+    void testScreenAndScrollbackMatch() {
+        testBuffer.insertText('a');
+        testBuffer.insertText('b');
+
+        assertTrue(testBuffer.printScreenContents().contains("ab"));
+        assertTrue(testBuffer.printScrollbackContents().contains("ab"));
+    }
+
+
+    /**
+     * createNewLine Return Behaviour
+     */
+
+    @Test
+    void testCreateNewLineReturnsTrue() {
+        boolean result = testBuffer.createNewLine();
+
+        assertTrue(result);
+    }
+
+
+    /**
+     * Logical Line Wrapping Edge Cases
+     */
+
+    @Test
+    void testLogicalLineWrapExactWidth() {
+        testBuffer.insertText('a');
+        testBuffer.insertText('b');
+
+        assertEquals("ab\n", testBuffer.printScreenLine());
+    }
+
+    @Test
+    void testLogicalLineWrapOverflow() {
+        testBuffer.insertText('a');
+        testBuffer.insertText('b');
+        testBuffer.insertText('c');
+
+        assertEquals("ab\nc\n", testBuffer.printScreenContents());
+    }
+
+
+    /**
+     * Character Width Edge Cases
+     */
+
+    @Test
+    void testControlCharacterIgnored() {
+        boolean result = testBuffer.insertText('\u0007'); // bell
+
+        assertFalse(result);
+    }
+
+    @Test
+    void testCombiningCharacterIgnored() {
+        boolean result = testBuffer.insertText('\u0301'); // combining acute accent
+
+        assertFalse(result);
+    }
+
+
+    /**
+     * Cursor Position After Resize
+     */
+
+    @Test
+    void testCursorPositionAfterWidthChange() {
+        testBuffer.insertText('a');
+        testBuffer.insertText('b');
+
+        testBuffer.setWidth(1);
+
+        assertTrue(testBuffer.getScreenCursorY() >= 0);
+    }
+
+    @Test
+    void testCursorPositionAfterHeightChange() {
+        testBuffer.insertText('a');
+        testBuffer.createNewLine();
+        testBuffer.insertText('b');
+
+        testBuffer.setHeight(1);
+
+        assertTrue(testBuffer.getScreenCursorY() >= 0);
+    }
 }

@@ -1,5 +1,6 @@
 package org.BufferTest;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,5 +30,18 @@ public class CharacterCellTest {
         assertFalse(testCell.equals(new CharacterCell('c', Colour.WHITE, Colour.DEFAULT, Style.NONE)));
         assertFalse(testCell.equals(new CharacterCell('c', Colour.DEFAULT, Colour.WHITE, Style.NONE)));
         assertFalse(testCell.equals(new CharacterCell('c', Colour.DEFAULT, Colour.DEFAULT, Style.BOLD)));
+    }
+
+    @Test
+    void testSetTrailFlag() {
+        testCell.setTrailFlag(TrailFlag.WIDE_START);
+        assertEquals(TrailFlag.WIDE_START, testCell.getTrailFlag());
+    }
+
+    @Test
+    void testCopy() {
+        CharacterCell original = new CharacterCell('a', Colour.WHITE, Colour.BLACK, Style.BOLD, TrailFlag.WIDE_END);
+        testCell.copy(original);
+        assertEquals(original, testCell);
     }
 }

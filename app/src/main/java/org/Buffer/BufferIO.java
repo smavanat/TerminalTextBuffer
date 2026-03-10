@@ -373,29 +373,3 @@ public class BufferIO {
         return Math.max(0, Math.min(Integer.parseInt(command.substring(3).trim()), 80));
     }
 }
-
-enum Command {
-    LEFT, //h
-    RIGHT, //l
-    DOWN, //j
-    UP, //k
-    INSERT, //i
-    REPLACE, //r
-    NEW_LINE, //n
-    CLEAR_LINE, //cl
-    CLEAR_SCREEN, //cs
-    CLEAR_BUFFER, //cb
-    PRINT_LINE, //pl
-    PRINT_SCREEN, //ps
-    PRINT_BUFFER, //pb
-    SET_WIDTH, //sw
-    SET_HEIGHT, //sh
-    DELETE, //x
-    NONE
-}
-
-enum Mode {
-    COMMAND,
-    REPLACE,
-    INSERT
-}
