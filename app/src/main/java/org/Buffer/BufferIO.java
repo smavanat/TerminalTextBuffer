@@ -63,8 +63,8 @@ public class BufferIO {
     }
 
     private void clearScreen() {
-        System.out.print("\u001B[2J");   //clear the screen
-        System.out.print("\u001B[H");    //move cursor to top-left corner
+        // System.out.print("\u001B[2J");   //clear the screen
+        // System.out.print("\u001B[H");    //move cursor to top-left corner
         System.out.flush();
 
         for(int i = 0; i < screenBuf.size(); i++) {
@@ -248,6 +248,8 @@ public class BufferIO {
     }
 
     private Command getCommandFromInput(String command) {
+        if(command.length() >= 2 && command.substring(0, 2).equals("sw")) return Command.SET_WIDTH;
+        if(command.length() >= 2 && command.substring(0, 2).equals("sh")) return Command.SET_HEIGHT;
         switch(command) {
             case "h":
                 return Command.LEFT;
@@ -327,6 +329,16 @@ public class BufferIO {
                     case PRINT_BUFFER:
                         message = buffer.printScrollbackContents();
                         break;
+                    case SET_WIDTH:
+                        if (command.length() < 4) break;
+                        buffer.setWidth(parseIntArgument(command));
+                        initialiseScreen();
+                        break;
+                    case SET_HEIGHT:
+                        if (command.length() < 4) break;
+                        buffer.setHeight(parseIntArgument(command));
+                        initialiseScreen();
+                        break;
                     default:
                         break;
                 }
@@ -346,6 +358,10 @@ public class BufferIO {
                 break;
         }
     }
+
+    private int parseIntArgument(String command) {
+        return Math.max(0, Math.min(Integer.parseInt(command.substring(3).trim()), 80));
+    }
 }
 
 enum Command {
@@ -362,6 +378,8 @@ enum Command {
     PRINT_LINE, //pl
     PRINT_SCREEN, //ps
     PRINT_BUFFER, //pb
+    SET_WIDTH, //sw
+    SET_HEIGHT, //sh
     NONE
 }
 
