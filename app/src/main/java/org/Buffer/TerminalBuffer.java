@@ -1,9 +1,8 @@
 package org.Buffer;
 
-import java.rmi.UnexpectedException;
 import java.util.ArrayList;
 
-import javax.management.InvalidAttributeValueException;
+import com.google.common.util.concurrent.CycleDetectingLockFactory.WithExplicitOrdering;
 
 /**
  * NOTE: Lines in the screen are set to have their wrapped attribute set to true if they wrap from the previous line,
@@ -92,6 +91,10 @@ public class TerminalBuffer {
         return this.scrollMaximum;
     }
 
+    public void setScrollMaximum(Integer val) {
+        this.scrollMaximum = val >= 0 ? val : Integer.MAX_VALUE;
+    }
+
     //Getters for logical cursor X and Y
     public Integer getCursorX() {
         return this.cursorX;
@@ -145,10 +148,14 @@ public class TerminalBuffer {
 
     /**
      * Sets a cursor's x position to the specified position, clamped between [0, logical line width)
+     * If the cursor ends at a cell with {@link TrailFlag} WIDE_END, move one cell to the left
      * @param val the new x position to move the cursor to
      */
     public void setCursorX(Integer val) {
         cursorX = Math.max(0, Math.min(val, scrollback.get(cursorY).size()));
+
+        if(cursorX > 0 && cursorX < scrollback.get(cursorY).size() && scrollback.get(cursorY).get(cursorX).getTrailFlag() == TrailFlag.WIDE_END) //Cursor can never land on the end of a wide character
+            cursorX -= 1;
     }
 
     /**
@@ -172,9 +179,18 @@ public class TerminalBuffer {
     /**
      * Moves the cursor's x position by some amount of steps. Negative values move to the left, positive values move to the right.
      * The cursor's end position is clamped between [0, line_width), where line_width is the number of characters in the unwrapped line the cursor is on
+     * If the cursor ends at a cell with {@link TrailFlag} WIDE_END, move one cell in the direction you want to move to
      * @param val the number of steps to move */
     public void moveCursorX(Integer val) {
-        setCursorX(cursorX + val);
+        int pos = cursorX + val;
+
+        ArrayList<CharacterCell> line = scrollback.get(cursorY);
+        //If we are moving to an empty flag, skip it
+        if(pos > 0 && pos < line.size() && line.get(pos).getTrailFlag() == TrailFlag.WIDE_END) {
+            if (pos < line.size() - 1 && val > 0) pos += 1; //If moving right
+            else if (pos > 0 && val < 0) pos -= 1; //If moving left
+        }
+        setCursorX(pos);
     }
     /**
      * Moves the cursor's y position by some amount of steps. If the movement would cause the cursor to move off the screen, scroll
@@ -242,16 +258,36 @@ public class TerminalBuffer {
 
     /**
      * Inserts text at the mouse cursor's position only if the cursor is at the bottom of the screen and scrollback
-     * Moves the mouse one position to the right
+     * Moves the cursor to the right w times, where w is the width of the input {@link Character}
+     * If the cursor starts at the end of a wide character, moves one space to the left before writing
+     * If inserting the input at the current position would overlap with other wide characters, erase them first
      * @param text the new character to add
      * @return true if the text was inserted, false if the cursor is not at the bottom line
      */
     public boolean insertText(Character text) {
-        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false;
 
         int oldLines = logicalToTerminal(cursorY);
-        scrollback.get(cursorY).add(cursorX, new CharacterCell(text));
-        cursorX++;
+
+        int charWidth = getCharWidth(text);
+        if(charWidth < 1) return false; // skip 0-width or invalid
+
+        ArrayList<CharacterCell> line = scrollback.get(cursorY);
+        // Move cursor back if on the second half of a wide char
+        if(cursorX > 0 && cursorX < line.size() && line.get(cursorX).getTrailFlag() == TrailFlag.WIDE_END) {
+            cursorX -= 1;
+        }
+
+        clearOverlappingWideChars(charWidth);
+
+        if(charWidth == 1) {
+            line.add(cursorX, new CharacterCell(text));
+            cursorX += 1;
+        } else { // width == 2
+            line.add(cursorX, new CharacterCell(text, TrailFlag.WIDE_START));
+            line.add(cursorX + 1, new CharacterCell(text, TrailFlag.WIDE_END));
+            cursorX += 2;
+        }
 
         if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
 
@@ -259,36 +295,37 @@ public class TerminalBuffer {
     }
 
     /**
-     * Test implementation of inserting variable length chars (Untested)
-     */
-    public boolean insertText_New(Character text) {
-        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
-
-        int charWidth = getCharWidth((int) text.charValue());
-        int oldLines = logicalToTerminal(cursorY);
-        if(scrollback.get(cursorY).get(cursorX-1).getTrailFlag() == TrailFlag.WIDE_END) cursorX -= 1;
-
-        clearOverlappingWideChars(charWidth);
-
-        if(width == 1) {
-            scrollback.get(cursorY).add(cursorX, new CharacterCell(text));
-            cursorX++;
-        }
-
-        return true;
-    }
-
-    /**
      * Overwrites text at the mouse cursor's current position only if the cursor is at the bottom of the screen and scrollback.
-     * Moves the mouse one position to the right, stopping if it has reached the end of the existing text
+     * If the new character and current character have the same width, just replaces the character
+     * If the new character has a width of 1 and the old character has a width of 2, removes the trailing character
+     * If the new character has a width of 2 and the old character has a width of 1, adds a trailing character
+     * Moves the mouse <newCharWidth> spaces to the right, stopping if it has reached the end of the existing text
      * @param text the new character to add
      * @return true if the text was overwritten, false if the cursor is not at the bottom line
      */
     public boolean overwriteText(Character text) {
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
-        scrollback.get(cursorY).get(cursorX).setCharacter(text); //Overwriting the character in this position
-        moveCursorX(1);
+        ArrayList<CharacterCell> line = scrollback.get(cursorY);
+        int oldLines = logicalToTerminal(cursorY);
+
+        int oldCharWidth = getCharWidth(line.get(cursorX).getCharacter());
+        int newCharWidth = getCharWidth(text);
+
+        if(oldCharWidth == 2 && cursorX > 0 && line.get(cursorX).getTrailFlag() == TrailFlag.WIDE_END) {
+            cursorX -= 1;
+        }
+
+        line.get(cursorX).setCharacter(text);
+
+        if(oldCharWidth == 1 && newCharWidth == 2)
+            line.add(cursorX+1, new CharacterCell(null, TrailFlag.WIDE_END));
+        if(oldCharWidth == 2 && newCharWidth == 1)
+            line.remove(cursorX+1);
+
+        moveCursorX(newCharWidth == 2 ? 2 : 1);
+
+        if(oldLines != logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen if adding different sized character changes number of terminal lines
 
         return true;
     }
@@ -509,6 +546,8 @@ public class TerminalBuffer {
 
     /**
      * Wraps logical lines so they fit the screen width
+     * If the character at the end of a screen line would be the first half of a 2-wide character,
+     * wraps onto a new line
      * @param logical the full logical line
      */
     private void wrapLogicalLine(ArrayList<CharacterCell> logical) {
@@ -517,8 +556,16 @@ public class TerminalBuffer {
         while(index < logical.size()) {
             TerminalLine screenLine = new TerminalLine(this.width, index != 0); //Creating a new screen line
 
-            for(int x = 0; x < width && index < logical.size(); x++) { //Copying the character cells over
-                screenLine.add(logical.get(index++));
+            int x = 0; //Tracks the x position in the screen line
+            while(x < width && index < logical.size()) {
+                CharacterCell cell = logical.get(index);
+                int charWidth = (cell.getTrailFlag() == TrailFlag.WIDE_START) ? 2 : 1;
+
+                if(x + charWidth > width) break; //Wide characters at the end of a line must go onto a newline
+
+                screenLine.add(cell);
+                x += charWidth;
+                index++;
             }
 
             screen.addToBack(screenLine); //Adding it to the bottom of the screen
@@ -620,92 +667,59 @@ public class TerminalBuffer {
     }
 
     private void clearOverlappingWideChars(int charWidth) {
-        //Early exit if cursor is at the end of the line or if size is not 1 or 2 for now since I don't know what to do with other length chars
-        if(charWidth != 1 || charWidth != 2 || cursorX >= scrollback.get(cursorY).size()) return;
+        if(charWidth != 1 && charWidth != 2) return; // Only handle width 1 and 2
 
-        CharacterCell currentChar = getCellAtPos(cursorX, cursorY);
-        if(charWidth == 1 && currentChar.getTrailFlag() == TrailFlag.NORMAL) return; //No overlapping wide chars
+        ArrayList<CharacterCell> line = scrollback.get(cursorY);
 
-        ArrayList<CharacterCell> line = scrollback.get(cursorY); //Get the current line
+        //Ensure cursorX is within bounds
+        if(cursorX < 0) cursorX = 0;
+        if(cursorX >= line.size()) return;
 
-        //If the current char is the start of a wide character
-        if(currentChar.getTrailFlag() == TrailFlag.WIDE_START) {
-            //Sanity check in case we have half of a wide char at the end of the line
-            if(cursorX == line.size())
-                throw new IndexOutOfBoundsException("Half of a wide char at the end of the line");
+        CharacterCell currentCell = line.get(cursorX);
 
-            //Set the current char to be blank and normal
-            currentChar.setCharacter(' ');
-            currentChar.setTrailFlag(TrailFlag.NORMAL);
-
-            //Get the second character of the wide char
-            CharacterCell nextChar = getCellAtPos(cursorX+1, cursorY);
-            if(nextChar.getTrailFlag() != TrailFlag.WIDE_END) //Sanity check
-                throw new IllegalArgumentException("The second char of a wide character was not WIDE_END");
-
-            //If this wide char is at the end of the line, remove the second character, otherwise just set it to blank and normal
-            if(cursorX + 2 != line.size()) {
-                nextChar.setTrailFlag(TrailFlag.NORMAL);
-                nextChar.setCharacter(' ');
-            }
-            else {
-                line.removeLast();
-            }
+        //If cursor is over the second half of a wide char, move to start
+        if(currentCell.getTrailFlag() == TrailFlag.WIDE_END) {
+            cursorX -= 1;
+            currentCell = line.get(cursorX);
         }
-        //If the current char is the end of a wide character
-        else if(currentChar.getTrailFlag() == TrailFlag.WIDE_END) {
-            if(cursorX == 0) //Sanity check
-                throw new IndexOutOfBoundsException("Half of a wide char at the start of the line");
 
-            //Set the current char to blank and normal
-            currentChar.setCharacter(' ');
-            currentChar.setTrailFlag(TrailFlag.NORMAL);
+        //If current cell is part of a wide char, clear both cells
+        if(currentCell.getTrailFlag() == TrailFlag.WIDE_START) {
+            //Clear first cell
+            currentCell.setCharacter(' ');
+            currentCell.setTrailFlag(TrailFlag.NORMAL);
 
-            //Get the first character of the wide char
-            CharacterCell prevChar = getCellAtPos(cursorX-1, cursorY);
-            if(prevChar.getTrailFlag() != TrailFlag.WIDE_START) //Sanity check
-                throw new IllegalArgumentException("The first char of a wide character was not WIDE_START");
-
-            //Set the first character to be blank and normal
-            prevChar.setTrailFlag(TrailFlag.NORMAL);
-            prevChar.setCharacter(' ');
-        }
-        //If the width is two, also need to make sure the second char is also not touching the start of a wide char
-        if(charWidth == 2) {
-            if(cursorX == line.size()) //Early exit if we are at the end of the line
-                return;
-
-            CharacterCell nextChar = getCellAtPos(cursorX+1, cursorY); //Get the next character
-            if(nextChar.getTrailFlag() == TrailFlag.WIDE_START) {//If its the start of a wide char
-                //Overwite it to be blank and normal
-                nextChar.setTrailFlag(TrailFlag.NORMAL);
-                nextChar.setCharacter(' ');
-
-                //Check that there is a second character
-                if(cursorX + 2 >= line.size())
-                    throw new IndexOutOfBoundsException("Half of a wide char at the end of the line");
-
-                //Get the second character
-                CharacterCell nextNextChar = getCellAtPos(cursorX + 2, cursorY);
-                if(nextNextChar.getTrailFlag() != TrailFlag.WIDE_END) //Sanity check
-                    throw new IllegalArgumentException("The second char of a wide character was not WIDE_END");
-
-                //If this wide char is at the end of the line, remove the second character, otherwise just set it to blank and normal
-                if(cursorX + 3 != line.size()) {
-                    nextNextChar.setTrailFlag(TrailFlag.NORMAL);
-                    nextNextChar.setCharacter(' ');
-                }
-                else {
-                    scrollback.get(cursorY).removeLast();
+            //Clear second cell (make sure it exists)
+            if(cursorX + 1 < line.size()) {
+                CharacterCell nextCell = line.get(cursorX + 1);
+                if(nextCell.getTrailFlag() == TrailFlag.WIDE_END) {
+                    nextCell.setCharacter(' ');
+                    nextCell.setTrailFlag(TrailFlag.NORMAL);
+                } else {
+                    // This should never happen in a consistent state
+                    throw new IllegalStateException("Wide char WIDE_START not followed by WIDE_END");
                 }
             }
         }
-    }
 
-    private CharacterCell getCellAtPos(int xPos, int yPos) {
-        int clampedY = Math.max(0, Math.min(scrollback.size()-1, yPos));
-        int clampedX = Math.max(0, Math.min(scrollback.get(clampedY).size()-1, xPos));
+        //For width-2 new character, also check if next cell is the start of a wide char
+        if(charWidth == 2 && cursorX + 1 < line.size()) {
+            CharacterCell nextCell = line.get(cursorX + 1);
+            if(nextCell.getTrailFlag() == TrailFlag.WIDE_START) {
+                // Clear both cells of the next wide char
+                nextCell.setCharacter(' ');
+                nextCell.setTrailFlag(TrailFlag.NORMAL);
 
-        return scrollback.get(clampedY).get(clampedX);
+                if(cursorX + 2 < line.size()) {
+                    CharacterCell nextNextCell = line.get(cursorX + 2);
+                    if(nextNextCell.getTrailFlag() == TrailFlag.WIDE_END) {
+                        nextNextCell.setCharacter(' ');
+                        nextNextCell.setTrailFlag(TrailFlag.NORMAL);
+                    } else {
+                        throw new IllegalStateException("Wide char WIDE_START not followed by WIDE_END");
+                    }
+                }
+            }
+        }
     }
 }
