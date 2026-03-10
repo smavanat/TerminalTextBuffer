@@ -71,6 +71,23 @@ public class TerminalBuffer {
     /**
      * @return the on-screen y position of the cursor
      */
+// public Integer getScreenCursorY() {
+//
+//     int screenY = screen.size() - 1;
+//     int logicalY = bottomIndex;
+//
+//     while (logicalY > cursorY) {
+//         screenY -= logicalToTerminal(logicalY);
+//         logicalY--;
+//     }
+//
+//     int rows = logicalToTerminal(cursorY);
+//     int cursorRow = cursorX / width;
+//
+//     screenY -= (rows - 1 - cursorRow);
+//
+//     return Math.max(0, Math.min(screenY, height - 1));
+// }
     public Integer getScreenCursorY() {
         int screenY = this.screen.size()-1; //Need it to be number of actual lines in the screen rather than height to avoid errors when not enough lines to fill the whole screen
         int logicalY = bottomIndex;
@@ -78,6 +95,7 @@ public class TerminalBuffer {
         //See how far up in the screen the cursor's logical line is
         while(logicalY >= 0 && logicalY != cursorY) {
             screenY -= logicalToTerminal(logicalY);
+            // screenY -= (logicalToTerminal(cursorY) - 1 - cursorX / width);
             logicalY--;
         }
         //See how many extra lines the characters after the logical x-position of the cursor are
@@ -170,7 +188,12 @@ public class TerminalBuffer {
      */
     public void setCursorY(Integer val) {
         Integer screenTop = getLogicalScreenTop();
+        System.out.println("Screen Top: " + screenTop);
+        System.out.println("Screen bottom: " + bottomIndex);
         Integer clampedVal = Math.max(0, Math.min(val, scrollback.size()-1));
+        System.out.println("Clamped Val: " + clampedVal);
+        System.out.println("Cursor Y: " + cursorY);
+        System.out.println("Srollback size: " + scrollback.size());
 
         if(clampedVal < screenTop) {
             scroll(clampedVal - screenTop);
@@ -205,6 +228,7 @@ public class TerminalBuffer {
      * @param val the number of steps to move
      */
     public void moveCursorY(Integer val) {
+        System.out.println("Moving to: " + (cursorY + val));
         setCursorY(cursorY + val);
     }
 
@@ -231,7 +255,6 @@ public class TerminalBuffer {
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
         addNewLine();
-        rebuildScreen();
         return true;
     }
 
@@ -240,6 +263,8 @@ public class TerminalBuffer {
      */
     public void clearScreen() {
         screen.clear();
+        cursorY = -1;
+        cursorX = 0;
         addNewLine();
         screen.addToFront(new TerminalLine(width));
     }
@@ -296,7 +321,6 @@ public class TerminalBuffer {
 
         if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
         else {
-            System.out.println("Screen Cursor X: " + getScreenCursorX());
             if(charWidth == 1) {
                 screen.get(getScreenCursorY()).add(getScreenCursorX(), new CharacterCell(text));
             } else { // width == 2
@@ -576,7 +600,7 @@ public class TerminalBuffer {
     private void wrapLogicalLine(ArrayList<CharacterCell> logical) {
         int index = 0;
 
-        while(index < logical.size()) {
+        do {
             TerminalLine screenLine = new TerminalLine(this.width, index != 0); //Creating a new screen line
 
             int x = 0; //Tracks the x position in the screen line
@@ -597,7 +621,7 @@ public class TerminalBuffer {
             if(screen.size() > height) {
                 screen.removeFromFront();
             }
-        }
+        } while(index < logical.size());
     }
 
     /**
@@ -611,11 +635,8 @@ public class TerminalBuffer {
             bottomIndex = Math.max(0, bottomIndex - 1);
             cursorY = Math.max(0, cursorY - 1);
         }
-        cursorY++;
+        moveCursorY(1);
         cursorX = 0;
-        if (cursorY > bottomIndex) {
-            bottomIndex = cursorY;
-        }
     }
 
     /**
@@ -624,12 +645,12 @@ public class TerminalBuffer {
      */
     private int getLogicalScreenTop() {
         int screenTop = bottomIndex; //The logical line at the top of the screen
-        int remainingRows = this.height; //Number of rows we haven't seen to be filled by a logical line in the screen
+        int remainingRows = this.height-1; //Number of rows we haven't seen to be filled by a logical line in the screen
 
         while(screenTop > 0 && remainingRows > 0) {
-            int lineRows = logicalToTerminal(screenTop-1);
-            if(lineRows > remainingRows) break; //If the number of lines the current screen top takes up is more than the remaining unfilled rows on the screen, break
-            remainingRows -= lineRows; //Otherwise decrease the number of remaining unfilled rows on the screen
+            // int lineRows = logicalToTerminal(screenTop-1);
+            // if(lineRows > remainingRows) break; //If the number of lines the current screen top takes up is more than the remaining unfilled rows on the screen, break
+            remainingRows -= logicalToTerminal(screenTop); //Otherwise decrease the number of remaining unfilled rows on the screen
             screenTop--; //Move to the next line up
         }
 
@@ -642,7 +663,7 @@ public class TerminalBuffer {
      * @return the number of lines this logical line takes up
      */
     private int logicalToTerminal(int index) {
-        return (scrollback.get(index).size() + this.width-1) /this.width;
+        return Math.max(1, (scrollback.get(index).size() + this.width-1) /this.width);
     }
 
     /**

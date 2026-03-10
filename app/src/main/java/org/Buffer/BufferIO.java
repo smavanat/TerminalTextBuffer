@@ -58,8 +58,8 @@ public class BufferIO {
     }
 
     private void clearScreen() {
-        System.out.print("\u001B[2J");   //clear the screen
-        System.out.print("\u001B[H");    //move cursor to top-left corner
+        // System.out.print("\u001B[2J");   //clear the screen
+        // System.out.print("\u001B[H");    //move cursor to top-left corner
         System.out.flush();
 
         for(int i = 0; i < screenBuf.size(); i++) {
