@@ -62,7 +62,7 @@ public class BufferIO {
     private void initialiseScreen() {
         screenBuf = new ArrayList<>(buffer.getWidth() * buffer.getHeight());
         for(int i = 0; i < buffer.getWidth() * buffer.getHeight(); i++) {
-            screenBuf.add(new CharacterCell(' ', buffer.getScreenForegroundColour(), buffer.getScreenBackgroundColour(), Style.NONE));
+            screenBuf.add(new CharacterCell(' ', buffer.getScreenForegroundColour(), buffer.getScreenBackgroundColour(), new boolean[]{false, false, false}));
         }
     }
 
@@ -75,7 +75,7 @@ public class BufferIO {
             screenBuf.get(i).setCharacter(' ');
             screenBuf.get(i).setForegroundColour(buffer.getScreenForegroundColour());
             screenBuf.get(i).setBackgroundColour(buffer.getScreenBackgroundColour());
-            screenBuf.get(i).setStyleFlag(Style.NONE);
+            screenBuf.get(i).setAllStyleFlags(new boolean[]{false, false, false});
             screenBuf.get(i).setTrailFlag(TrailFlag.NORMAL);
         }
     }
@@ -92,26 +92,21 @@ public class BufferIO {
     }
 
     private void printCursor() {
-        printCell(new CharacterCell(' ', Colour.RED, Colour.RED, Style.NONE));
+        printCell(new CharacterCell(' ', Colour.RED, Colour.RED, new boolean[]{false, false, false}));
     }
 
     private void printCell(CharacterCell c) {
         Colour fc = c.getForegroundColour() == Colour.DEFAULT ? buffer.getScreenForegroundColour() : c.getForegroundColour();
         Colour bc = c.getBackgroundColour() == Colour.DEFAULT ? buffer.getScreenBackgroundColour() : c.getBackgroundColour();
-        System.out.print(getAnsiStyle(c.getStyleFlag()) + getAnsiForegroundColour(fc) + getAnsiBackgroundColour(bc) + c.getCharacter().charValue() + "\u001B[0m");
+        System.out.print(getAnsiStyle(c.getAllStyleFlags()) + getAnsiForegroundColour(fc) + getAnsiBackgroundColour(bc) + c.getCharacter().charValue() + "\u001B[0m");
     }
 
-    private String getAnsiStyle(Style s) {
-        switch(s) {
-            case BOLD:
-                return "\u001B[1m";
-            case UNDERLINE:
-                return "\u001B[4m";
-            case ITALIC:
-                return "\u001B[3m";
-            default:
-                return "";
-        }
+    private String getAnsiStyle(boolean styles[]) {
+        String ret = "";
+        if(styles[Style.BOLD.ordinal()]) ret += "\u001B[1m";
+        if(styles[Style.UNDERLINE.ordinal()]) ret += "\u001B[4m";
+        if(styles[Style.ITALIC.ordinal()]) ret += "\u001B[3m";
+        return ret;
     }
 
     private String getAnsiBackgroundColour(Colour c) {

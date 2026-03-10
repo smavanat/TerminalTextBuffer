@@ -471,12 +471,12 @@ public class TerminalBuffer {
      * @param style the new style of the cell
      * @return true if the text was overwritten, false if the cursor is not at the bottom line
      */
-    public boolean setStyleAtCursorPos(Style style) {
+    public boolean setStyleAtCursorPos(Style style, boolean val) {
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1 || 
             scrollback.get(cursorY).size() == cursorX) return false; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
-        scrollback.get(cursorY).get(cursorX).setStyleFlag(style);//Overwriting the scrollback style in this position
-        screen.get(getScreenCursorY()).get(getScreenCursorX()).setStyleFlag(style);//Overwriting the screen style in this position
+        scrollback.get(cursorY).get(cursorX).setStyleFlag(style, val);//Overwriting the scrollback style in this position
+        screen.get(getScreenCursorY()).get(getScreenCursorX()).setStyleFlag(style, val);//Overwriting the screen style in this position
         return true;
     }
 
@@ -566,12 +566,18 @@ public class TerminalBuffer {
     }
 
     /**
-     * @return the style stored in the cell at the current cursor's position if the cursor is not beyond the end of the line
+     * @return the styles stored in the cell at the current cursor's position if the cursor is not beyond the end of the line
      */
-    public Style getStyleAtCursorPos() {
-        if(scrollback.get(cursorY).size() == cursorX) return Style.NONE; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
+    public boolean[] getStyleAtCursorPos() {
+        if(scrollback.get(cursorY).size() == cursorX) return new boolean[]{}; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
-        return scrollback.get(cursorY).get(cursorX).getStyleFlag();
+        return scrollback.get(cursorY).get(cursorX).getAllStyleFlags();
+    }
+
+    public boolean getStyleAtCursorPos(Style style) {
+        if(scrollback.get(cursorY).size() == cursorX) return false; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
+
+        return scrollback.get(cursorY).get(cursorX).getStyleFlag(style);
     }
 
     /**

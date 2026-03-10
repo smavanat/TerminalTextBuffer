@@ -27,9 +27,9 @@ public class CharacterCellTest {
         assertFalse(testCell.equals(null));
         assertFalse(testCell.equals(new Object()));
         assertFalse(testCell.equals(new CharacterCell('a')));
-        assertFalse(testCell.equals(new CharacterCell('c', Colour.WHITE, Colour.DEFAULT, Style.NONE)));
-        assertFalse(testCell.equals(new CharacterCell('c', Colour.DEFAULT, Colour.WHITE, Style.NONE)));
-        assertFalse(testCell.equals(new CharacterCell('c', Colour.DEFAULT, Colour.DEFAULT, Style.BOLD)));
+        assertFalse(testCell.equals(new CharacterCell('c', Colour.WHITE, Colour.DEFAULT, new boolean[]{false, false, false})));
+        assertFalse(testCell.equals(new CharacterCell('c', Colour.DEFAULT, Colour.WHITE, new boolean[]{false, false, false})));
+        assertFalse(testCell.equals(new CharacterCell('c', Colour.DEFAULT, Colour.DEFAULT, new boolean[]{true, true, true})));
     }
 
     @Test
@@ -40,7 +40,7 @@ public class CharacterCellTest {
 
     @Test
     void testCopy() {
-        CharacterCell original = new CharacterCell('a', Colour.WHITE, Colour.BLACK, Style.BOLD, TrailFlag.WIDE_END);
+        CharacterCell original = new CharacterCell('a', Colour.WHITE, Colour.BLACK, new boolean[]{false, false, false}, TrailFlag.WIDE_END);
         testCell.copy(original);
         assertEquals(original, testCell);
     }

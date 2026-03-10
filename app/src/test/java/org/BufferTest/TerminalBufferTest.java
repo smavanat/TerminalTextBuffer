@@ -2,6 +2,9 @@ package org.BufferTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Arrays;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.Buffer.TerminalBuffer;
@@ -422,9 +425,9 @@ public class TerminalBufferTest {
     void testSetStyle() {
         testBuffer.insertText('a');
         testBuffer.moveCursorX(-1);
-        testBuffer.setStyleAtCursorPos(Style.BOLD);
+        testBuffer.setStyleAtCursorPos(Style.BOLD, true);
 
-        assertEquals(Style.BOLD, testBuffer.getStyleAtCursorPos());
+        assertTrue(testBuffer.getStyleAtCursorPos(Style.BOLD));
     }
 
     @Test
@@ -434,7 +437,7 @@ public class TerminalBufferTest {
         testBuffer.moveCursorX(-1);
         testBuffer.setCursorY(0);
 
-        assertEquals(false, testBuffer.setStyleAtCursorPos(Style.BOLD));
+        assertFalse(testBuffer.setStyleAtCursorPos(Style.BOLD, true));
     }
 
     @Test
@@ -449,14 +452,14 @@ public class TerminalBufferTest {
         testBuffer.scroll(-1);
         testBuffer.moveCursorX(-1);
 
-        assertFalse(testBuffer.setStyleAtCursorPos(Style.BOLD));
+        assertFalse(testBuffer.setStyleAtCursorPos(Style.BOLD, true));
     }
 
     @Test
     void testSetStyleEndOfLine() {
         testBuffer.insertText('a');
 
-        assertEquals(false, testBuffer.setStyleAtCursorPos(Style.BOLD));
+        assertFalse(testBuffer.setStyleAtCursorPos(Style.BOLD, true));
     }
 
     @Test
@@ -573,19 +576,19 @@ public class TerminalBufferTest {
     void testGetStyle() {
         testBuffer.insertText('a');
         testBuffer.moveCursorX(-1);
-        testBuffer.setStyleAtCursorPos(Style.BOLD);
+        testBuffer.setStyleAtCursorPos(Style.BOLD, true);
 
-        assertEquals(Style.BOLD, testBuffer.getStyleAtCursorPos());
+        assertTrue(testBuffer.getStyleAtCursorPos(Style.BOLD));
     }
 
     @Test
     void testGetStyleEndOfLine() {
         testBuffer.insertText('a');
         testBuffer.moveCursorX(-1);
-        testBuffer.setStyleAtCursorPos(Style.BOLD);
+        testBuffer.setStyleAtCursorPos(Style.BOLD, true);
         testBuffer.moveCursorX(1);
 
-        assertEquals(Style.NONE, testBuffer.getStyleAtCursorPos());
+        assertTrue(Arrays.equals(new boolean[]{}, testBuffer.getStyleAtCursorPos()));
     }
 
     /**
