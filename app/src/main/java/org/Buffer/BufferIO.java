@@ -197,20 +197,6 @@ public class BufferIO {
         System.out.flush();
 
         int ch;
-        // while((ch = System.in.read()) != -1) {
-        //     if(ch == '\n') break;
-        //     else if (ch == '\r') continue;
-        //     else if (ch == 127 || ch == 8) {
-        //         if(inputBuffer.length() > 0) {
-        //             inputBuffer.deleteCharAt(inputBuffer.length()-1);
-        //             System.out.print("\b \b");
-        //         }
-        //     }
-        //     else {
-        //         inputBuffer.append((char) ch);
-        //     }
-        //     System.out.flush();
-        // }
         while ((ch = reader.read()) != -1) {
             if (ch == '\n') break;
             else if (ch == '\r') continue;
@@ -295,6 +281,8 @@ public class BufferIO {
                 return Command.PRINT_SCREEN;
             case "pb":
                 return Command.PRINT_BUFFER;
+            case "x":
+                return Command.DELETE;
             default:
                 return Command.NONE;
         }
@@ -357,6 +345,9 @@ public class BufferIO {
                         buffer.setHeight(parseIntArgument(command));
                         initialiseScreen();
                         break;
+                    case DELETE:
+                        buffer.deleteText();
+                        break;
                     default:
                         break;
                 }
@@ -399,6 +390,7 @@ enum Command {
     PRINT_BUFFER, //pb
     SET_WIDTH, //sw
     SET_HEIGHT, //sh
+    DELETE, //x
     NONE
 }
 

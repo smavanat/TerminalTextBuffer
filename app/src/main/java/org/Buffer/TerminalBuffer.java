@@ -9,14 +9,14 @@ import java.util.ArrayList;
 public class TerminalBuffer {
     private ArrayList<ArrayList<CharacterCell>> scrollback; //A list of all logical lines present in this terminal buffer
     private CircularArray<TerminalLine> screen; //A list of all the lines in the screen
-    private Integer width; //Width of the screen represented by the buffer in characters
-    private Integer height; //Height of the screen represented by the buffer in lines
-    private Integer scrollMaximum; //Maximum number of characters that can be held in the scrollback or scrollforward
+    private int width; //Width of the screen represented by the buffer in characters
+    private int height; //Height of the screen represented by the buffer in lines
+    private int scrollMaximum; //Maximum number of characters that can be held in the scrollback or scrollforward
     private Colour screenBackgroundColour; //The background colour of the screen. Defaults to black
     private Colour screenForegroundColour; //The foreground colour of the screen. Defaults to white
-    private Integer cursorX; //Logical X position of the cursor. The x-axis moves from left to right.
-    private Integer cursorY; //Logical Y position of the cursor. The y-axis moves from top to bottom
-    private Integer bottomIndex; //Internal line pointer into the scollback buffer
+    private int cursorX; //Logical X position of the cursor. The x-axis moves from left to right.
+    private int cursorY; //Logical Y position of the cursor. The y-axis moves from top to bottom
+    private int bottomIndex; //Internal line pointer into the scollback buffer
 
     /**
      * CONSTRUCTORS
@@ -71,23 +71,6 @@ public class TerminalBuffer {
     /**
      * @return the on-screen y position of the cursor
      */
-// public Integer getScreenCursorY() {
-//
-//     int screenY = screen.size() - 1;
-//     int logicalY = bottomIndex;
-//
-//     while (logicalY > cursorY) {
-//         screenY -= logicalToTerminal(logicalY);
-//         logicalY--;
-//     }
-//
-//     int rows = logicalToTerminal(cursorY);
-//     int cursorRow = cursorX / width;
-//
-//     screenY -= (rows - 1 - cursorRow);
-//
-//     return Math.max(0, Math.min(screenY, height - 1));
-// }
     public Integer getScreenCursorY() {
         int screenY = this.screen.size()-1; //Need it to be number of actual lines in the screen rather than height to avoid errors when not enough lines to fill the whole screen
         int logicalY = bottomIndex;
@@ -95,7 +78,6 @@ public class TerminalBuffer {
         //See how far up in the screen the cursor's logical line is
         while(logicalY >= 0 && logicalY != cursorY) {
             screenY -= logicalToTerminal(logicalY);
-            // screenY -= (logicalToTerminal(cursorY) - 1 - cursorX / width);
             logicalY--;
         }
         //See how many extra lines the characters after the logical x-position of the cursor are
@@ -297,12 +279,49 @@ public class TerminalBuffer {
         System.out.printf("Received char: %c (U+%04X)\n", text, (int) text);
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false;
 
+        ArrayList<CharacterCell> line = scrollback.get(cursorY);
         int oldLines = logicalToTerminal(cursorY);
 
+        if(text == '\b') {
+            if(cursorX == 0) return false; //Can't delete at the start of a line
+
+            cursorX--; //Delete the char behind the cursor
+            CharacterCell deleted = line.get(cursorX);
+
+            if(deleted.getTrailFlag() == TrailFlag.WIDE_END) { //If on second half of a wide char need to delete both halves
+                line.remove(cursorX-1);
+                line.remove(cursorX-1); //Calling it twice moves the second half back to the cursor's position
+            }
+            else if(deleted.getTrailFlag() == TrailFlag.WIDE_START) {
+                line.remove(cursorX);
+                line.remove(cursorX); //Calling it twice moves the second half back to the cursor's position
+            }
+            else {
+                line.remove(cursorX);
+            }
+
+            if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
+            else {
+                TerminalLine screenLine = screen.get(getScreenCursorY());
+                if(deleted.getTrailFlag() == TrailFlag.WIDE_END) { //If on second half of a wide char need to delete both halves
+                    cursorX--;
+                    screenLine.remove(getScreenCursorX());
+                    screenLine.remove(getScreenCursorX()); //Calling it twice moves the second half back to the cursor's position
+                }
+                else if(deleted.getTrailFlag() == TrailFlag.WIDE_START) {
+                    screenLine.remove(getScreenCursorX());
+                    screenLine.remove(getScreenCursorX()); //Calling it twice moves the second half back to the cursor's position
+                }
+                else {
+                    screenLine.remove(getScreenCursorX());
+                }
+            }
+            return true;
+        }
+        else {
         int charWidth = getCharWidth(text);
         if(charWidth < 1) return false; // skip 0-width or invalid
 
-        ArrayList<CharacterCell> line = scrollback.get(cursorY);
         // Move cursor back if on the second half of a wide char
         if(cursorX > 0 && cursorX < line.size() && line.get(cursorX).getTrailFlag() == TrailFlag.WIDE_END) {
             cursorX -= 1;
@@ -329,6 +348,47 @@ public class TerminalBuffer {
 
         cursorX += charWidth;
 
+        return true;
+        }
+
+    }
+
+    public boolean deleteText() {
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1 || cursorX >= scrollback.get(cursorY).size()) return false;
+
+        ArrayList<CharacterCell> line = scrollback.get(cursorY);
+        int oldLines = logicalToTerminal(cursorY);
+
+        CharacterCell deleted = line.get(cursorX); //Get the char to be deleted
+
+        if(deleted.getTrailFlag() == TrailFlag.WIDE_END) { //If on second half of a wide char need to delete both halves
+            line.remove(cursorX-1);
+            line.remove(cursorX-1); //Calling it twice moves the second half back to the cursor's position
+        }
+        else if(deleted.getTrailFlag() == TrailFlag.WIDE_START) {
+            line.remove(cursorX);
+            line.remove(cursorX); //Calling it twice moves the second half back to the cursor's position
+        }
+        else {
+            line.remove(cursorX);
+        }
+
+        if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
+        else {
+            TerminalLine screenLine = screen.get(getScreenCursorY());
+            if(deleted.getTrailFlag() == TrailFlag.WIDE_END) { //If on second half of a wide char need to delete both halves
+                cursorX--;
+                screenLine.remove(getScreenCursorX());
+                screenLine.remove(getScreenCursorX()); //Calling it twice moves the second half back to the cursor's position
+            }
+            else if(deleted.getTrailFlag() == TrailFlag.WIDE_START) {
+                screenLine.remove(getScreenCursorX());
+                screenLine.remove(getScreenCursorX()); //Calling it twice moves the second half back to the cursor's position
+            }
+            else {
+                screenLine.remove(getScreenCursorX());
+            }
+        }
         return true;
     }
 
