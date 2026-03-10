@@ -96,6 +96,7 @@ loadScripts(document, 'script');</script>
 <hr>
 <div class="type-signature"><span class="modifiers">public enum </span><span class="element-name type-name-label">TrailFlag</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Enum.html" title="class or interface in java.lang" class="external-link">Enum</a>&lt;<a href="TrailFlag.html" title="enum class in org.Buffer">TrailFlag</a>&gt;</span></div>
+<div class="block">Enum to keep the state of a CharacterCell</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -117,11 +118,17 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Enum Constant</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code><a href="#NORMAL" class="member-name-link">NORMAL</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">A one-width char</div>
+</div>
 <div class="col-first odd-row-color"><code><a href="#WIDE_END" class="member-name-link">WIDE_END</a></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">The end of a 2-width char</div>
+</div>
 <div class="col-first even-row-color"><code><a href="#WIDE_START" class="member-name-link">WIDE_START</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">The start of a 2-width char</div>
+</div>
 </div>
 </section>
 </li>
@@ -171,18 +178,21 @@ the order they are declared.</div>
 <section class="detail" id="NORMAL">
 <h3>NORMAL</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="TrailFlag.html" title="enum class in org.Buffer">TrailFlag</a></span>&nbsp;<span class="element-name">NORMAL</span></div>
+<div class="block">A one-width char</div>
 </section>
 </li>
 <li>
 <section class="detail" id="WIDE_START">
 <h3>WIDE_START</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="TrailFlag.html" title="enum class in org.Buffer">TrailFlag</a></span>&nbsp;<span class="element-name">WIDE_START</span></div>
+<div class="block">The start of a 2-width char</div>
 </section>
 </li>
 <li>
 <section class="detail" id="WIDE_END">
 <h3>WIDE_END</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="TrailFlag.html" title="enum class in org.Buffer">TrailFlag</a></span>&nbsp;<span class="element-name">WIDE_END</span></div>
+<div class="block">The end of a 2-width char</div>
 </section>
 </li>
 </ul>

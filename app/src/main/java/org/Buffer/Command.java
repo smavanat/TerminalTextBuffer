@@ -1,5 +1,8 @@
 package org.Buffer;
 
+/**
+ * All of the possible commands that the {@link BufferIO} can interpret
+ */
 public enum Command {
     LEFT, //h
     RIGHT, //l
