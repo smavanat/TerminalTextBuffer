@@ -314,13 +314,13 @@ public class BufferIO {
                         buffer.clearEntireBuffer();
                         break;
                     case PRINT_LINE:
-                        buffer.printScrollLine();
+                        System.out.println(buffer.printScrollLine());
                         break;
                     case PRINT_SCREEN:
-                        buffer.printScreenContents();
+                        System.out.println(buffer.printScreenContents());
                         break;
                     case PRINT_BUFFER:
-                        buffer.printScrollbackContents();
+                        System.out.println(buffer.printScrollbackContents());
                         break;
                     default:
                         break;

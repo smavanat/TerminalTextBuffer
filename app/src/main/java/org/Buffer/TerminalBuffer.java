@@ -188,12 +188,7 @@ public class TerminalBuffer {
      */
     public void setCursorY(Integer val) {
         Integer screenTop = getLogicalScreenTop();
-        System.out.println("Screen Top: " + screenTop);
-        System.out.println("Screen bottom: " + bottomIndex);
         Integer clampedVal = Math.max(0, Math.min(val, scrollback.size()-1));
-        System.out.println("Clamped Val: " + clampedVal);
-        System.out.println("Cursor Y: " + cursorY);
-        System.out.println("Srollback size: " + scrollback.size());
 
         if(clampedVal < screenTop) {
             scroll(clampedVal - screenTop);
@@ -262,10 +257,10 @@ public class TerminalBuffer {
      * Clears the lines from the screen. Does not remove anything from the scrollback
      */
     public void clearScreen() {
-        screen.clear();
-        cursorY = -1;
+        // cursorY = -1;
         cursorX = 0;
         addNewLine();
+        screen.clear();
         screen.addToFront(new TerminalLine(width));
     }
 
@@ -427,6 +422,7 @@ public class TerminalBuffer {
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
         scrollback.get(cursorY).clear();
+        cursorX = 0;
         rebuildScreen(); //Remake the layout
         return true;
     }
@@ -645,7 +641,7 @@ public class TerminalBuffer {
      */
     private int getLogicalScreenTop() {
         int screenTop = bottomIndex; //The logical line at the top of the screen
-        int remainingRows = this.height-1; //Number of rows we haven't seen to be filled by a logical line in the screen
+        int remainingRows = this.screen.size()-1; //Number of rows we haven't seen to be filled by a logical line in the screen
 
         while(screenTop > 0 && remainingRows > 0) {
             // int lineRows = logicalToTerminal(screenTop-1);
