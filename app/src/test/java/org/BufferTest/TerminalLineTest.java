@@ -23,14 +23,12 @@ public class TerminalLineTest {
     void testConstructorDefaults() {
         testLine = new TerminalLine(5);
 
-        assertEquals(5, testLine.getWidth());
         assertFalse(testLine.getWrapped());
         assertEquals(new ArrayList<CharacterCell>(), testLine.getCharacters());
     }
 
     @Test
     void testConstructorSetWrapped() {
-        assertEquals(10, testLine.getWidth());
         assertTrue(testLine.getWrapped());
     }
 

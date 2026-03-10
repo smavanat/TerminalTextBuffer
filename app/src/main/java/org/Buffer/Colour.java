@@ -22,5 +22,8 @@ public enum Colour {
     BRIGHT_MAGENTA,
     BRIGHT_CYAN,
     BRIGHT_WHITE,
+    /**
+     * Defaults to using the colour of whatever you're rendering on
+     */
     DEFAULT
 }

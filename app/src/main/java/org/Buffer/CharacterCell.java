@@ -8,7 +8,7 @@ import java.util.Arrays;
  *      a {@link Character} representing the character in the cell
  *      a {@link Colour} representing the foreground colour of the cell
  *      a {@link Colour} representing the background colour of the cell
- *      a {@link Flag} representing the style flag of the cell
+ *      a {@link Style} representing the style flag of the cell
  */
 public class CharacterCell {
     private Character character;
@@ -62,49 +62,92 @@ public class CharacterCell {
         this(c, Colour.DEFAULT, Colour.DEFAULT, new boolean[]{false, false, false}, tf);
     }
 
-    //Getters and setters for all of the elements in this class
+    /**
+     * @return the character stored in this CharacterCell
+     */
     public Character getCharacter() {
         return this.character;
     }
+    /**
+     * @param val the value to set this CharacterCell's character to
+     */
     public void setCharacter(Character val) {
         this.character = val;
     }
 
+    /**
+     * @return the foreground colour stored in this CharacterCell
+     */
     public Colour getForegroundColour() {
         return this.foregroundColour;
     }
+    /**
+     * @param val the value to set this CharacterCell's foreground colour to
+     */
     public void setForegroundColour(Colour val) {
         this.foregroundColour = val;
     }
 
+    /**
+     * @return the background colour stored in this CharacterCell
+     */
     public Colour getBackgroundColour() {
         return this.backgroundColour;
     }
+    /**
+     * @param val the value to set this CharacterCell's background colour to
+     */
     public void setBackgroundColour(Colour val) {
         this.backgroundColour = val;
     }
 
+    /**
+     * @param flag the style flag whose status you want to know
+     * @return the status of the given flag in this CharacterCell
+     */
     public boolean getStyleFlag(Style flag) {
         return this.styleFlags[flag.ordinal()];
     }
+    /**
+     * Sets the provided style flag for this char to the given value
+     * @param flag the style flag to set
+     * @param val the value to set this Style to
+     */
     public void setStyleFlag(Style flag, boolean val) {
         this.styleFlags[flag.ordinal()] = val;
     }
 
+    /**
+     * @return the trial flag stored in this CharacterCell
+     */
     public TrailFlag getTrailFlag() {
         return this.trailFlag;
     }
+    /**
+     * @param val the value to set this CharacterCell's trail flag to
+     */
     public void setTrailFlag(TrailFlag val) {
         this.trailFlag = val;
     }
 
+    /**
+     * @return the state of all the style flags stored in this CharacterCell
+     */
     public boolean[] getAllStyleFlags() {
         return this.styleFlags;
     }
+    /**
+     * @param vals the value to set this CharacterCell's style flags to
+     */
     public void setAllStyleFlags(boolean vals[]) {
         this.styleFlags = vals;
     }
 
+    /**
+     * Checks if two CharacterCells are equal by checking for equality between all constituent variables
+     * @param o the other {@link Object} to check against
+     * @return true if all internal are the same, false if not or if the provided object is null or of a different class
+     */
     @Override
     public boolean equals(Object o) {
         if(this == o) return true;
@@ -120,6 +163,10 @@ public class CharacterCell {
         return false;
     }
 
+    /**
+     * Copies all of the internal variables of a different {@link CharacterCell} into the caller
+     * @param c the CharacterCell to copy from
+     */
     public void copy(CharacterCell c) {
         this.character = c.getCharacter();
         this.backgroundColour = c.getBackgroundColour();

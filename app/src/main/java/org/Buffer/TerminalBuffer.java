@@ -3,8 +3,10 @@ package org.Buffer;
 import java.util.ArrayList;
 
 /**
- * NOTE: Lines in the screen are set to have their wrapped attribute set to true if they wrap from the previous line,
- *       not if they wrap onto the next one
+ * A class implementing a Terminal text buffer for holding the text currently on the screen and that has been scrolled past
+ * Stores two buffers for the screen and scrollback content, alongside the current cursor position
+ * It also stores the maximum amount of data you can store in the scrollback buffer and the foreground and background colours the screen should
+ * default to.
  */
 public class TerminalBuffer {
     private ArrayList<ArrayList<CharacterCell>> scrollback; //A list of all logical lines present in this terminal buffer
@@ -85,65 +87,110 @@ public class TerminalBuffer {
         return Math.max(0, Math.min(screenY, height - 1)); //Clamp the value
     }
 
+    /**
+     * @return the maximum amount of lines that can be stored in the scrollback buffer
+     */
     public Integer getScrollMaximum() {
         return this.scrollMaximum;
     }
 
+    /**
+     * Sets the maximum amount of lines that can be stored in the scrollback buffer
+     * @param val the new maximum amount of lines that can be stored in the scrollback buffer
+     */
     public void setScrollMaximum(Integer val) {
         this.scrollMaximum = val >= 0 ? val : Integer.MAX_VALUE;
     }
 
-    //Getters for logical cursor X and Y
+    /**
+     * @return the x position of the cursor in the scrollback
+     */
     public Integer getCursorX() {
         return this.cursorX;
     }
 
+    /**
+     * @return the y position of the cursor in the scrollback
+     */
     public Integer getCursorY() {
         return this.cursorY;
     }
 
+
+    /**
+     * @return the background colour the text in this screen defaults to
+     */
     public Colour getScreenBackgroundColour() {
         return this.screenBackgroundColour;
     }
 
+    /**
+     * @return the foreground colour the text in this screen defaults to
+     */
     public Colour getScreenForegroundColour() {
         return this.screenForegroundColour;
     }
 
+    /**
+     * @param val the new screen backgrouund colour. Does not set inputs of Colour.DEFAULT
+     */
     public void setScreenBackgroundColour(Colour val) {
         if(val == Colour.DEFAULT) return; //Avoid breaking the colour system
         this.screenBackgroundColour = val;
     }
 
+    /**
+     * @param val the new screen foreground colour. Does not set inputs of Colour.DEFAULT
+     */
     public void setScreenForegroundColour(Colour val) {
         if(val == Colour.DEFAULT) return; //Avoid breaking the colour system
         this.screenForegroundColour = val;
     }
 
+    /**
+     * @return the height of the screen represented by this buffer
+     */
     public Integer getHeight() {
         return this.height;
     }
 
+    /**
+     * @return the width of the screen represented by this buffer
+     */
     public Integer getWidth() {
         return this.width;
     }
 
+    /**
+     * Sets the height of the screen and rebuilds the layout
+     * @param val the new screen height
+     */
     public void setHeight(Integer val) {
         this.height = val;
         screen.clear();
         rebuildScreen();
     }
 
+    /**
+     * Sets the width of the screen and rebuilds the layout
+     * @param val the new screen width
+     */
     public void setWidth(Integer val) {
         this.width = val;
         screen.clear();
         rebuildScreen();
     }
 
+    /**
+     * @return the {@link TerminalLine} at the given index of the screen
+     */
     public TerminalLine getScreenLine(int index) {
         return screen.get(index);
     }
 
+    /**
+     * @return the number of {@link TerminalLine} actually currently displayed in the screen
+     */
     public int getScreenSize() {
         return screen.size();
     }
@@ -166,6 +213,7 @@ public class TerminalBuffer {
 
     /**
      * Sets a cursor's y position to the specified position, clamped between [0, scrollback height)
+     * If the new position is on a line off of the screen, scroll
      * @param val the new x position to move the cursor to
      */
     public void setCursorY(Integer val) {
@@ -180,14 +228,15 @@ public class TerminalBuffer {
         }
 
         cursorY = clampedVal;
-        setCursorX(Math.min(cursorX, scrollback.get(cursorY).size()));
+        setCursorX(Math.min(cursorX, scrollback.get(cursorY).size())); //Setting the x position so that its at not off the end of the line we moved to
     }
 
     /**
      * Moves the cursor's x position by some amount of steps. Negative values move to the left, positive values move to the right.
      * The cursor's end position is clamped between [0, line_width), where line_width is the number of characters in the unwrapped line the cursor is on
      * If the cursor ends at a cell with {@link TrailFlag} WIDE_END, move one cell in the direction you want to move to
-     * @param val the number of steps to move */
+     * @param val the number of steps to move
+     */
     public void moveCursorX(Integer val) {
         int pos = cursorX + val;
         System.out.println("Moving to initial: "+ pos);
@@ -282,43 +331,6 @@ public class TerminalBuffer {
         ArrayList<CharacterCell> line = scrollback.get(cursorY);
         int oldLines = logicalToTerminal(cursorY);
 
-        if(text == '\b') {
-            if(cursorX == 0) return false; //Can't delete at the start of a line
-
-            cursorX--; //Delete the char behind the cursor
-            CharacterCell deleted = line.get(cursorX);
-
-            if(deleted.getTrailFlag() == TrailFlag.WIDE_END) { //If on second half of a wide char need to delete both halves
-                line.remove(cursorX-1);
-                line.remove(cursorX-1); //Calling it twice moves the second half back to the cursor's position
-            }
-            else if(deleted.getTrailFlag() == TrailFlag.WIDE_START) {
-                line.remove(cursorX);
-                line.remove(cursorX); //Calling it twice moves the second half back to the cursor's position
-            }
-            else {
-                line.remove(cursorX);
-            }
-
-            if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
-            else {
-                TerminalLine screenLine = screen.get(getScreenCursorY());
-                if(deleted.getTrailFlag() == TrailFlag.WIDE_END) { //If on second half of a wide char need to delete both halves
-                    cursorX--;
-                    screenLine.remove(getScreenCursorX());
-                    screenLine.remove(getScreenCursorX()); //Calling it twice moves the second half back to the cursor's position
-                }
-                else if(deleted.getTrailFlag() == TrailFlag.WIDE_START) {
-                    screenLine.remove(getScreenCursorX());
-                    screenLine.remove(getScreenCursorX()); //Calling it twice moves the second half back to the cursor's position
-                }
-                else {
-                    screenLine.remove(getScreenCursorX());
-                }
-            }
-            return true;
-        }
-        else {
         int charWidth = getCharWidth(text);
         if(charWidth < 1) return false; // skip 0-width or invalid
 
@@ -329,6 +341,7 @@ public class TerminalBuffer {
 
         clearOverlappingWideChars(charWidth);
 
+        //Writing to the scrollback
         if(charWidth == 1) {
             line.add(cursorX, new CharacterCell(text));
         } else { // width == 2
@@ -337,7 +350,7 @@ public class TerminalBuffer {
         }
 
         if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
-        else {
+        else { //Otherwise just write to the screen as well
             if(charWidth == 1) {
                 screen.get(getScreenCursorY()).add(getScreenCursorX(), new CharacterCell(text));
             } else { // width == 2
@@ -346,15 +359,18 @@ public class TerminalBuffer {
             }
         }
 
-        cursorX += charWidth;
+        cursorX += charWidth; //Moving the cursor
 
         return true;
-        }
-
     }
 
+    /**
+     * Moves the cursor left one position and removes the character at the cursor's new position
+     * If the cursor lands on a wide char, removes both characters in the char
+     * @return true on successful removal, false if it is not at the bottom line in the scrollback or if there is no char to erase
+     */
     public boolean deleteText() {
-        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1 || cursorX >= scrollback.get(cursorY).size()) return false;
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false;
 
         ArrayList<CharacterCell> line = scrollback.get(cursorY);
         int oldLines = logicalToTerminal(cursorY);
@@ -397,7 +413,7 @@ public class TerminalBuffer {
      * If the new character and current character have the same width, just replaces the character
      * If the new character has a width of 1 and the old character has a width of 2, removes the trailing character
      * If the new character has a width of 2 and the old character has a width of 1, adds a trailing character
-     * Moves the mouse <newCharWidth> spaces to the right, stopping if it has reached the end of the existing text
+     * Moves the mouse {$newCharWidth} spaces to the right, stopping if it has reached the end of the existing text
      * @param text the new character to add
      * @return true if the text was overwritten, false if the cursor is not at the bottom line
      */
@@ -409,10 +425,14 @@ public class TerminalBuffer {
 
         int oldCharWidth = getCharWidth(line.get(cursorX).getCharacter());
         int newCharWidth = getCharWidth(text);
+        if(newCharWidth < 1) return false; // skip 0-width or invalid
 
+        // Move cursor back if on the second half of a wide char
         if(oldCharWidth == 2 && cursorX > 0 && line.get(cursorX).getTrailFlag() == TrailFlag.WIDE_END) {
             cursorX -= 1;
         }
+
+        clearOverlappingWideChars(newCharWidth); //Erase any chars that would be overwritten
 
         line.get(cursorX).setCharacter(text);
         screen.get(getScreenCursorY()).get(getScreenCursorX()).setCharacter(text);
@@ -423,14 +443,14 @@ public class TerminalBuffer {
             line.remove(cursorX+1);
 
         if(oldLines != logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen if adding different sized character changes number of terminal lines
-        else {
+        else { //Otherwise just add them directly to teh screen
             if(oldCharWidth == 1 && newCharWidth == 2)
                 screen.get(getScreenCursorY()).add(getScreenCursorX()+1, new CharacterCell(null, TrailFlag.WIDE_END));
             if(oldCharWidth == 2 && newCharWidth == 1)
                 screen.get(getScreenCursorY()).remove(getScreenCursorX()+1);
         }
 
-        moveCursorX(newCharWidth == 2 ? 2 : 1);
+        moveCursorX(newCharWidth == 2 ? 2 : 1); //Update the cursor's position
 
         return true;
     }
@@ -574,6 +594,10 @@ public class TerminalBuffer {
         return scrollback.get(cursorY).get(cursorX).getAllStyleFlags();
     }
 
+    /**
+     * @param style the style to check for having been set
+     * @return if the provided style has been applied to the current cell
+     */
     public boolean getStyleAtCursorPos(Style style) {
         if(scrollback.get(cursorY).size() == cursorX) return false; //Early exit when not at the bottom of the screen and the cursor is on the end of the line
 
@@ -588,7 +612,8 @@ public class TerminalBuffer {
         TerminalLine line = screen.get(getScreenCursorY());
 
         for(int i = 0; i < line.size(); i++) {
-            buf.append(line.get(i).getCharacter());
+            if(line.get(i).getTrailFlag() != TrailFlag.WIDE_END) //Skip dummy chars
+                buf.append(line.get(i).getCharacter());
         }
         buf.append('\n');
 
@@ -604,7 +629,8 @@ public class TerminalBuffer {
         ArrayList<CharacterCell> line = scrollback.get(cursorY);
 
         for(int i = 0; i < line.size(); i++) {
-            buf.append(line.get(i).getCharacter());
+            if(line.get(i).getTrailFlag() != TrailFlag.WIDE_END) //Skip dummy chars
+                buf.append(line.get(i).getCharacter());
         }
         buf.append('\n');
 
@@ -619,7 +645,8 @@ public class TerminalBuffer {
 
         for(int i = 0; i < screen.size(); i++) {
             for(int j = 0; j < screen.get(i).size(); j++) {
-                buf.append(screen.get(i).get(j).getCharacter());
+                if(screen.get(i).get(j).getTrailFlag() != TrailFlag.WIDE_END) //Skip dummy chars
+                    buf.append(screen.get(i).get(j).getCharacter());
             }
             buf.append("\n")    ;
         }
@@ -635,7 +662,8 @@ public class TerminalBuffer {
 
         for(int i = 0; i < scrollback.size(); i++) {
             for(int j = 0; j < scrollback.get(i).size(); j++) {
-                buf.append(scrollback.get(i).get(j).getCharacter());
+                if(scrollback.get(i).get(j).getTrailFlag() != TrailFlag.WIDE_END) //Skip dummy chars
+                    buf.append(scrollback.get(i).get(j).getCharacter());
             }
             buf.append('\n');
         }
@@ -778,6 +806,10 @@ public class TerminalBuffer {
         );
     }
 
+    /**
+     * Clears all chars that overlap with the char at the current cursor's position given the input width
+     * @param charWidth the width of the character we want ot test for overlap for
+     */
     private void clearOverlappingWideChars(int charWidth) {
         if(charWidth != 1 && charWidth != 2) return; // Only handle width 1 and 2
 

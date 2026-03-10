@@ -6,14 +6,22 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Scanner;
 
+/**
+ * Class to act as input manager for the {@link TerminalBuffer}
+ * Operates using a series of user commands, similar to vim
+ */
 public class BufferIO {
-    private TerminalBuffer buffer;
-    private Scanner inputScanner;
-    private ArrayList<CharacterCell> screenBuf;
-    private Mode currentMode = Mode.COMMAND;
-    private String message;
-    private InputStreamReader reader;
+    private TerminalBuffer buffer; //The buffer this is getting I/O for
+    private Scanner inputScanner; //The scanner to get user input
+    private InputStreamReader reader; //The reader to get UTF8 input
+    private ArrayList<CharacterCell> screenBuf; //Where we output the text buffer's screen
+    private Mode currentMode = Mode.COMMAND; //The state this class is in
+    private String message; //Any output we may need to print to the user
 
+    /**
+     * Default constructor
+     * Sets the screen size to be 10x10, infinite scrollback, white background and black foreground
+     */
     public BufferIO() {
         buffer = new TerminalBuffer(10, 10, -1, Colour.WHITE, Colour.BLACK);
         inputScanner = new Scanner(System.in);
@@ -21,6 +29,9 @@ public class BufferIO {
         reader = new InputStreamReader(System.in, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Function to poll the user for input
+     */
     public void getInputFromUser() {
         buffer.setWidth(getIntInputBound("Enter Terminal Width (must be between 0 and 80): ", 0, 80));
         buffer.setHeight(getIntInputBound("Enter Terminal Height (must be between 0 and 24): ", 0, 24));
@@ -29,12 +40,14 @@ public class BufferIO {
         initialiseScreen();
     }
 
+    /**
+     * The main execution loop after the user has provided input
+     */
     public void mainLoop() {
         while(true) {
             clearScreen();
             copyScreen();
             printScreen();
-            // try { Thread.sleep(1000); } catch (InterruptedException e) {}
             String command = "";
             try {
                 command = readUserCommands();
@@ -47,18 +60,25 @@ public class BufferIO {
         }
     }
 
+    /**
+     * Prints the terminal screen out alongside some statistics
+     */
     private void printScreen() {
-        System.out.println("MODE: " + currentMode.toString() + "                 Position: (" + buffer.getCursorX() + ", " + buffer.getCursorY() + ")");
+        System.out.println("MODE: " + currentMode.toString() + "                 Position: (" + buffer.getCursorX() + ", " + buffer.getCursorY() + ")"); //Print the mode and cursor pos
+
         for(int i = 0; i < screenBuf.size(); i++) {
-            if(screenBuf.get(i).getTrailFlag() == TrailFlag.WIDE_END) continue;
-            if(buffer.getScreenCursorY() * buffer.getWidth() + buffer.getScreenCursorX() == i) printCursor();
-            else printCell(screenBuf.get(i));
-            if((i + 1) % buffer.getWidth() == 0) System.out.print('\n');
+            if(screenBuf.get(i).getTrailFlag() == TrailFlag.WIDE_END) continue; //Skip dummy chars
+            if(buffer.getScreenCursorY() * buffer.getWidth() + buffer.getScreenCursorX() == i) printCursor(); //Print the cell to the screen if there is one
+            else printCell(screenBuf.get(i)); //Otherwise just print a blank screen
+            if((i + 1) % buffer.getWidth() == 0) System.out.print('\n'); //Newline once we reach the end of a line
         }
-        if(message != "") System.out.print(message);
+        if(message != "") System.out.print(message); //Print and clear the message if there is one
         message ="";
     }
 
+    /**
+     * Resets this classes screen buffer size to match that of the text buffer
+     */
     private void initialiseScreen() {
         screenBuf = new ArrayList<>(buffer.getWidth() * buffer.getHeight());
         for(int i = 0; i < buffer.getWidth() * buffer.getHeight(); i++) {
@@ -66,11 +86,15 @@ public class BufferIO {
         }
     }
 
+    /**
+     * Clear's this class's internal screen buffer, as well as the actual terminal screen we are printing to
+     */
     private void clearScreen() {
-        // System.out.print("\u001B[2J");   //clear the screen
-        // System.out.print("\u001B[H");    //move cursor to top-left corner
+        System.out.print("\u001B[2J");   //clear the screen
+        System.out.print("\u001B[H");    //move cursor to top-left corner
         System.out.flush();
 
+        //Set all of the chars to be blank and default
         for(int i = 0; i < screenBuf.size(); i++) {
             screenBuf.get(i).setCharacter(' ');
             screenBuf.get(i).setForegroundColour(buffer.getScreenForegroundColour());
@@ -80,6 +104,9 @@ public class BufferIO {
         }
     }
 
+    /**
+     * Copy's the text buffers screen into our buffer
+     */
     private void copyScreen() {
         for(int i = 0; i < buffer.getScreenSize(); i++) {
             TerminalLine line = buffer.getScreenLine(i);
@@ -91,16 +118,27 @@ public class BufferIO {
         }
     }
 
+    /**
+     * Prints a red cursor
+     */
     private void printCursor() {
         printCell(new CharacterCell(' ', Colour.RED, Colour.RED, new boolean[]{false, false, false}));
     }
 
+    /**
+     * Prints a cell including its styling and colours
+     * @param c the CharacterCell to print
+     */
     private void printCell(CharacterCell c) {
         Colour fc = c.getForegroundColour() == Colour.DEFAULT ? buffer.getScreenForegroundColour() : c.getForegroundColour();
         Colour bc = c.getBackgroundColour() == Colour.DEFAULT ? buffer.getScreenBackgroundColour() : c.getBackgroundColour();
         System.out.print(getAnsiStyle(c.getAllStyleFlags()) + getAnsiForegroundColour(fc) + getAnsiBackgroundColour(bc) + c.getCharacter().charValue() + "\u001B[0m");
     }
 
+    /**
+     * @param styles the styles to get the ansi codes for
+     * @return the ANSI code for the styles given a cell as a String
+     */
     private String getAnsiStyle(boolean styles[]) {
         String ret = "";
         if(styles[Style.BOLD.ordinal()]) ret += "\u001B[1m";
@@ -109,6 +147,10 @@ public class BufferIO {
         return ret;
     }
 
+    /**
+     * @param c the Colour whose ANSI code needs to be retrieved
+     * @return the ANSI code corresponding to the given background colour as a string
+     */
     private String getAnsiBackgroundColour(Colour c) {
         switch(c) {
             case BLACK:
@@ -148,6 +190,10 @@ public class BufferIO {
         }
     }
 
+    /**
+     * @param c the Colour whose ANSI code needs to be retrieved
+     * @return the ANSI code corresponding to the given foreground colour as a string
+     */
     private String getAnsiForegroundColour(Colour c) {
         switch(c) {
             case BLACK:
@@ -187,6 +233,9 @@ public class BufferIO {
         }
     }
 
+    /**
+     * Reads commands from the user including wide chars properly
+     */
     private String readUserCommands() throws IOException {
         StringBuilder inputBuffer = new StringBuilder();
         System.out.flush();
@@ -210,6 +259,11 @@ public class BufferIO {
         return inputBuffer.toString();
     }
 
+    /**
+     * Keeps polling the user for int input
+     * @param promptText what the user should be displayed as a prompt
+     * @return the int value they enter
+     */
     private int getIntInput(String promptText) {
         System.out.print(promptText);
         while(true) {
@@ -224,6 +278,11 @@ public class BufferIO {
         }
     }
 
+    /**
+     * Keeps polling the user for int input within a given bound
+     * @param promptText what the user should be displayed as a prompt
+     * @return the int value they enter
+     */
     private int getIntInputBound(String promptText, int lower, int upper) {
         System.out.print(promptText);
         while(true) {
@@ -246,6 +305,11 @@ public class BufferIO {
         }
     }
 
+    /**
+     * Parses a string for a Command
+     * @param command the string to parse
+     * @return the parsed command
+     */
     private Command getCommandFromInput(String command) {
         if(command.length() >= 2 && command.substring(0, 2).equals("sw")) return Command.SET_WIDTH;
         if(command.length() >= 2 && command.substring(0, 2).equals("sh")) return Command.SET_HEIGHT;
@@ -283,6 +347,10 @@ public class BufferIO {
         }
     }
 
+    /**
+     * Executes the function associated with a command
+     * @param command the string containing the command to execute
+     */
     private void interpretCommand(String command) {
         if(command.length() <= 0) return;
 
@@ -364,6 +432,10 @@ public class BufferIO {
         }
     }
 
+    /**
+     * @param command the string whose int argument needs to be parsed
+     * @return the int argument given with a command
+     */
     private int parseIntArgument(String command) {
         return Math.max(0, Math.min(Integer.parseInt(command.substring(3).trim()), 80));
     }

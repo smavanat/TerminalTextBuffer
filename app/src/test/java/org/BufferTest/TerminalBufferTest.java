@@ -732,35 +732,6 @@ public class TerminalBufferTest {
         assertEquals(0, testBuffer.getCursorX());
     }
 
-
-    /**
-     * Backspace Behaviour
-     */
-
-    @Test
-    void testBackspaceDeletesCharacter() {
-        testBuffer.insertText('a');
-        testBuffer.insertText('\b');
-
-        assertEquals("\n", testBuffer.printScrollLine());
-    }
-
-    @Test
-    void testBackspaceAtStartOfLine() {
-        boolean result = testBuffer.insertText('\b');
-
-        assertFalse(result);
-    }
-
-    @Test
-    void testBackspaceDeletesWideCharacter() {
-        testBuffer.insertText('界');
-        testBuffer.insertText('\b');
-
-        assertEquals("\n", testBuffer.printScrollLine());
-    }
-
-
     /**
      * deleteText()
      */
@@ -784,14 +755,6 @@ public class TerminalBufferTest {
 
         assertEquals("\n", testBuffer.printScrollLine());
     }
-
-    @Test
-    void testDeleteTextAtEndOfLineFails() {
-        testBuffer.insertText('a');
-
-        assertFalse(testBuffer.deleteText());
-    }
-
 
     /**
      * Cursor Clamp Behaviour

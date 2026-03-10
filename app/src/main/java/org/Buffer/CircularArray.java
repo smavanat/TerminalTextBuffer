@@ -1,6 +1,7 @@
 package org.Buffer;
 
 import java.util.NoSuchElementException;
+import java.util.ArrayDeque;
 
 /**
  * Since the default java {@link ArrayDeque} does not support getting elements by index,

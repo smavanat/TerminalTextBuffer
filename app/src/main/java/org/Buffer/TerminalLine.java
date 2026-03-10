@@ -4,13 +4,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * Represents a 'logical' line, i.e. the entire string of characters before a '\n' symbol
- * Stores both its CharacterCell string and how many lines it wraps over
+ * Represents a terminal line, i.e. the entire string of characters up to its parent screen buffer's width
+ * Stores both its CharacterCell string and whether it wraps from the previous line
  */
 public class TerminalLine {
     ArrayList<CharacterCell> characters; //Stores the characters in this line
-    private int width;
-    private boolean wrapped;
+    private int width; //The max width this line can stretch to
+    private boolean wrapped; //Whether this line wraps from the previous one
 
     /**
      * Creates a new Terminal line
@@ -18,21 +18,30 @@ public class TerminalLine {
      * @param width the width of the TerminalLine
      */
     public TerminalLine(int width, boolean wrapped) {
+        if(width < 0) throw new IllegalArgumentException();
+
         characters = new ArrayList<>(width);
         this.width = width;
         this.wrapped = wrapped;
     }
 
+    /**
+     * Default constructor for an unwrapped line
+     * @param width the width of the new TerminalLine
+     */
     public TerminalLine(int width) {
         this(width, false);
     }
 
+    /**
+     * @return whether this line wraps from the previous one
+     */
     public boolean getWrapped() {
         return this.wrapped;
     }
-    public int getWidth() {
-        return this.width;
-    }
+    /**
+     * @return the internal CharacterCell this object stores
+     */
     public ArrayList<CharacterCell> getCharacters() {
         return this.characters;
     }
@@ -87,10 +96,17 @@ public class TerminalLine {
         characters.clear();
     }
 
+    /**
+     * Wrapper for {@link ArrayList}.addAll()
+     */
     public void addAll(Collection<? extends CharacterCell> c) {
         characters.addAll(c);
     }
 
+    /**
+     * Wrapper for {@link ArrayList}.remove()
+     * @param index the index of the element to be removed
+     */
     public void remove(int index) {
         characters.remove(index);
     }
