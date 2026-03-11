@@ -20,6 +20,7 @@ public enum Command {
     SET_WIDTH, //sw
     SET_HEIGHT, //sh
     DELETE, //x
+    FILL,
     NONE
 }
 

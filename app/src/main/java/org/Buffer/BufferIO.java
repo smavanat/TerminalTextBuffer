@@ -68,7 +68,7 @@ public class BufferIO {
 
         for(int i = 0; i < screenBuf.size(); i++) {
             if(screenBuf.get(i).getTrailFlag() == TrailFlag.WIDE_END) continue; //Skip dummy chars
-            if(buffer.getScreenCursorY() * buffer.getWidth() + buffer.getScreenCursorX() == i) printCursor(); //Print the cell to the screen if there is one
+            if((buffer.getScreenCursorY() * buffer.getWidth()) + buffer.getScreenCursorX() == i) printCursor(); //Print the cell to the screen if there is one
             else printCell(screenBuf.get(i)); //Otherwise just print a blank screen
             if((i + 1) % buffer.getWidth() == 0) System.out.print('\n'); //Newline once we reach the end of a line
         }
@@ -313,6 +313,7 @@ public class BufferIO {
     private Command getCommandFromInput(String command) {
         if(command.length() >= 2 && command.substring(0, 2).equals("sw")) return Command.SET_WIDTH;
         if(command.length() >= 2 && command.substring(0, 2).equals("sh")) return Command.SET_HEIGHT;
+        if(command.length() >= 2 && command.substring(0, 1).equals("f")) return Command.FILL;
         switch(command) {
             case "h":
                 return Command.LEFT;
@@ -411,6 +412,9 @@ public class BufferIO {
                     case DELETE:
                         buffer.deleteText();
                         break;
+                    case FILL:
+                        char fillChar = parseCharArgs(command);
+                        if(fillChar != ' ') buffer.fillLineWithChar(fillChar);
                     default:
                         break;
                 }
@@ -420,9 +424,6 @@ public class BufferIO {
                     currentMode = Mode.COMMAND;
                     break;
                 }
-                // for(int i = 0; i < command.length(); i++) {
-                //     buffer.insertText(command.charAt(i));
-                // }
                 command.codePoints().forEach(cp -> buffer.insertText((char) cp));
                 break;
             case REPLACE:
@@ -438,5 +439,12 @@ public class BufferIO {
      */
     private int parseIntArgument(String command) {
         return Math.max(0, Math.min(Integer.parseInt(command.substring(3).trim()), 80));
+    }
+
+    private char parseCharArgs(String command) {
+        if(command.startsWith("f ") && command.length() > 2) {
+            return command.charAt(2);
+        }
+        return ' ';
     }
 }

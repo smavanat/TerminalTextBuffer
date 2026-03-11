@@ -739,7 +739,6 @@ public class TerminalBufferTest {
     @Test
     void testDeleteTextSingleCharacter() {
         testBuffer.insertText('a');
-        testBuffer.moveCursorX(-1);
 
         testBuffer.deleteText();
 
@@ -749,7 +748,6 @@ public class TerminalBufferTest {
     @Test
     void testDeleteTextWideCharacter() {
         testBuffer.insertText('界');
-        testBuffer.moveCursorX(-2);
 
         testBuffer.deleteText();
 

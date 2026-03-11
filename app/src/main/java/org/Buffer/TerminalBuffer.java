@@ -370,10 +370,12 @@ public class TerminalBuffer {
      * @return true on successful removal, false if it is not at the bottom line in the scrollback or if there is no char to erase
      */
     public boolean deleteText() {
-        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false;
+        if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1 || cursorX <= 0) return false;
 
         ArrayList<CharacterCell> line = scrollback.get(cursorY);
         int oldLines = logicalToTerminal(cursorY);
+
+        cursorX--; //Move the cursor back one space
 
         CharacterCell deleted = line.get(cursorX); //Get the char to be deleted
 
@@ -388,8 +390,9 @@ public class TerminalBuffer {
         else {
             line.remove(cursorX);
         }
+        System.out.println("Screen Cursor Pos: (" + getScreenCursorX() + ", " + getScreenCursorY() + ")");
 
-        if(oldLines < logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
+        if(oldLines != logicalToTerminal(cursorY)) rebuildScreen(); //Need to shift the screen down
         else {
             TerminalLine screenLine = screen.get(getScreenCursorY());
             if(deleted.getTrailFlag() == TrailFlag.WIDE_END) { //If on second half of a wide char need to delete both halves
@@ -405,6 +408,7 @@ public class TerminalBuffer {
                 screenLine.remove(getScreenCursorX());
             }
         }
+
         return true;
     }
 
@@ -524,11 +528,13 @@ public class TerminalBuffer {
     public boolean fillLineWithChar(CharacterCell fill) {
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
-        for(int i = getScreenCursorX(); i < width; i++) {
+        int charWidth = getCharWidth(fill.getCharacter());
+        for(int i = getScreenCursorX(); i < width; i+=charWidth) {
+            if(charWidth + i > width) break;
+            screen.get(getScreenCursorY()).add(fill);
             scrollback.get(cursorY).add(fill);
-            cursorX++; //Moving the cursor
+            cursorX+=charWidth; //Moving the cursor
         }
-        rebuildScreen();
 
         return true;
     }
@@ -544,12 +550,14 @@ public class TerminalBuffer {
     public boolean fillLineWithChar(Character fill) {
         if(cursorY != scrollback.size()-1 || bottomIndex != scrollback.size()-1) return false; //Early exit when not at the bottom of the screen
 
+        int charWidth = getCharWidth(fill);
         CharacterCell defaultFill = new CharacterCell(fill);
-        for(int i = getScreenCursorX(); i < width; i++) {
+        for(int i = getScreenCursorX(); i < width; i+=charWidth) {
+            if(charWidth + i > width) break;
+            screen.get(getScreenCursorY()).add(defaultFill);
             scrollback.get(cursorY).add(defaultFill);
-            cursorX++; //Moving the cursor
+            cursorX+=charWidth; //Moving the cursor
         }
-        rebuildScreen();
 
         return true;
     }

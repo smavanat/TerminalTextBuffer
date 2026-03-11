@@ -204,7 +204,6 @@ public class BufferIOTest {
         interpret.setAccessible(true);
 
         buffer.insertText('a');
-        buffer.moveCursorX(-1);
 
         interpret.invoke(io, "x");
 
