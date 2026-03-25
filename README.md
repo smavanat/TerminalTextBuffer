@@ -1,3 +1,5 @@
+# Note  
+I am currently working on a full implementation of a Terminal Emulator. The current code can be found [here](https://github.com/smavanat/termz).  
 # TerminalTextBuffer
 This is the implementation of a terminal text buffer I made for an internship application at JetBrains.  
 The buffer can be interacted with by running ```./gradlew run```. This will prompt the user for dimension and scrollback sizes, before printing a small terminal window to the terminal.  
